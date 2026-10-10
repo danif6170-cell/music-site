@@ -668,7 +668,8 @@
       el.innerHTML = '<div class="status">⬇️ מוריד אליך... <span class="pct">0%</span></div><div class="bar"><i></i></div>';
       const pct = el.querySelector('.pct'), bar = el.querySelector('.bar i');
       const parts = [];
-      let start = 0, got = 0, size = r.size || 0;
+      let start = r.data ? null : 0, got = 0, size = r.size || 0;
+      if (r.data) { parts.push(Uint8Array.from(atob(r.data), ch => ch.charCodeAt(0))); }
       try {
         while (start !== null) {
           const c = await api({ action: 'chunk', id: jobId, start });
