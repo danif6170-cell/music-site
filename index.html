@@ -417,7 +417,7 @@
 
     <h3>🎤 זמרים מותרים</h3>
     <div class="help">כשזה מופעל – הבוט מוריד רק שירים של הזמרים שברשימה, וכל השאר נחסם (גם בקישור ישיר וגם במייל).
-      אפשר כמה שמות לאותו זמר עם / למשל: <b>ישי ריבו / Ishay Ribo</b></div>
+      מספיק לכתוב את השם בעברית – הבוט מוסיף לבד את האיות באנגלית ואת הכינויים המוכרים (למשל MBD).</div>
     <div class="switch"><span>הורד רק מזמרים שברשימה</span><input type="checkbox" id="sgOn"></div>
     <div class="switch"><span>להחיל גם על 🎬 וידאו</span><input type="checkbox" id="sgVideo" checked></div>
     <div class="urlrow">
@@ -679,13 +679,16 @@
     $('panelBg').onclick = () => openP(false);
 
     // ===== זמרים מותרים =====
-    let singers = { on: false, video: true, list: [] }, sgTimer = null;
+    let singers = { on: false, video: true, list: [], alias: {} }, sgTimer = null;
     function drawSingers() {
       $('sgOn').checked = !!singers.on; $('sgVideo').checked = singers.video !== false;
       $('sgList').innerHTML = '';
       singers.list.forEach((n, i) => {
         const c = document.createElement('span'); c.className = 'chip';
-        c.innerHTML = '🎤 ' + esc(n) + ' <button type="button" title="הסר">✕</button>';
+        const al = (singers.alias || {})[n] || [];
+        c.title = al.join(' • ');
+        c.innerHTML = '🎤 ' + esc(n) + (al.length ? ' <small style="opacity:.65">· ' + esc(al.slice(0, 2).join(', ')) +
+                      (al.length > 2 ? ' +' + (al.length - 2) : '') + '</small>' : '') + ' <button type="button" title="הסר">✕</button>';
         c.querySelector('button').onclick = () => { singers.list.splice(i, 1); drawSingers(); saveSingers(); };
         $('sgList').appendChild(c);
       });
@@ -698,10 +701,14 @@
       catch (e) { $('sgStat').textContent = '❌ ' + e.message; }
     }
     function saveSingers() {
-      $('sgStat').textContent = '⏳ שומר...';
+      $('sgStat').textContent = '⏳ שומר ומזהה את השמות באנגלית...';
       clearTimeout(sgTimer);
       sgTimer = setTimeout(async () => {
-        try { await api({ action: 'saveSingers', designKey, on: singers.on, video: singers.video, list: singers.list }); drawSingers(); }
+        try {
+          const r = await api({ action: 'saveSingers', designKey, on: singers.on, video: singers.video, list: singers.list });
+          if (r.singers) singers.alias = Object.assign({}, singers.alias, r.singers.alias);
+          drawSingers();
+        }
         catch (e) { $('sgStat').textContent = '❌ ' + e.message; }
       }, 500);
     }
