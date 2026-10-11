@@ -157,6 +157,11 @@
     .modes button.on[data-mode="song"]    { background: var(--accent);  color: #fff; }
     .modes button.on[data-mode="lecture"] { background: var(--accent2); color: #fff; }
     .modes button.on[data-mode="video"]   { background: #0ea5e9; color: #fff; }
+    .modes button.on[data-mode="album"]   { background: linear-gradient(135deg, #f59e0b, #b45309); color: #fff; }
+    .me.alb { background: linear-gradient(135deg, #f59e0b, #b45309); }
+    .zipcard { display: flex; align-items: center; gap: 12px; margin-top: 10px; padding: 12px; border-radius: 14px;
+               background: rgba(127,127,127,.1); border: 1px solid var(--stroke); font-size: 14px; }
+    .zipcard .zi { font-size: 30px; }
     .modes button.on[data-mode="ai"]      { background: linear-gradient(135deg, #10b981, #0ea5e9); color: #fff; }
     #aichat { display: none; }
     .ai #chat { display: none; }
@@ -378,7 +383,7 @@
       <div class="msg bot welcome" id="welcome">
         <div class="big">🎶</div>
         <b>מה נשמע היום?</b><br>
-        <span class="muted">🎵 שיר – שם השיר או הזמר<br>🎓 הרצאה – שם השיעור או קישור<br>🎬 וידאו – שם הסרטון או קישור</span>
+        <span class="muted">🎵 שיר – שם השיר או הזמר<br>🎓 הרצאה – שם השיעור או קישור<br>🎬 וידאו – שם הסרטון או קישור<br>💿 אלבום – שם האלבום (+ הזמר) או קישור לפלייליסט – כל השירים בקובץ ZIP</span>
       </div>
     </div>
 
@@ -404,6 +409,7 @@
         <button type="button" data-mode="song" class="on">🎵 שיר</button>
         <button type="button" data-mode="lecture">🎓 הרצאה</button>
         <button type="button" data-mode="video">🎬 וידאו</button>
+        <button type="button" data-mode="album">💿 אלבום</button>
         <button type="button" data-mode="ai">🤖 בינה</button>
       </div>
       <form id="f">
@@ -910,7 +916,8 @@
       b.onclick = () => {
         mode = b.dataset.mode;
         document.querySelectorAll('.modes button').forEach(x => x.classList.toggle('on', x === b));
-        q.placeholder = { song: 'שם השיר או הזמר...', lecture: 'שם השיעור או קישור...', video: 'שם הסרטון או קישור...', ai: 'שאל אותי כל דבר...' }[mode];
+        q.placeholder = { song: 'שם השיר או הזמר...', lecture: 'שם השיעור או קישור...', video: 'שם הסרטון או קישור...',
+                          album: 'שם האלבום והזמר, או קישור לפלייליסט...', ai: 'שאל אותי כל דבר...' }[mode];
         document.body.classList.toggle('ai', mode === 'ai');
         if (mode === 'ai' && !aiLoaded) loadAiHistory();
         fitQ();
@@ -932,8 +939,8 @@
         ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
     }
     const fmt = s => Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
-    const icon = m => m === 'lecture' ? '🎓' : m === 'video' ? '🎬' : '🎵';
-    const meCls = m => 'me' + (m === 'lecture' ? ' lec' : m === 'video' ? ' vid' : '');
+    const icon = m => m === 'lecture' ? '🎓' : m === 'video' ? '🎬' : m === 'album' ? '💿' : '🎵';
+    const meCls = m => 'me' + (m === 'lecture' ? ' lec' : m === 'video' ? ' vid' : m === 'album' ? ' alb' : '');
     const shortQ = s => /^https?:\/\//.test(s) ? '🔗 ' + s.replace(/^https?:\/\/(www\.)?/, '').slice(0, 40) + '…' : s;
     function when(t) {
       const d = new Date(t), now = new Date();
@@ -1000,6 +1007,12 @@
     }
 
     function statusFor(sec, m) {
+      if (m === 'album') {
+        if (sec < 18) return 'מדליק את השרת...';
+        if (sec < 25) return 'מחפש את האלבום...';
+        if (sec < 120) return 'מוריד את כל השירים (כמה במקביל)...';
+        return 'אורז את האלבום ושולח אליך...';
+      }
       if (sec < 4)  return 'שולח לשרת...';
       if (sec < 18) return 'מדליק את השרת...';
       if (sec < 23) return 'מחפש ביוטיוב...';
@@ -1082,14 +1095,17 @@
       api({ action: 'release', id: jobId }).catch(() => {});   // נמחק מהענן
 
       const isVid = r.mode === 'video' || r.ext === 'mp4';
-      const blob = new Blob(parts, { type: isVid ? 'video/mp4' : 'audio/mpeg' });
+      const isZip = r.mode === 'album' || r.ext === 'zip';
+      const blob = new Blob(parts, { type: isZip ? 'application/zip' : isVid ? 'video/mp4' : 'audio/mpeg' });
       const url = URL.createObjectURL(blob);
-      const name = (r.fileName || (String(r.title || 'media').replace(/[\\/:*?"<>|]/g, '') + (isVid ? '.mp4' : '.mp3')));
+      const name = (r.fileName || (String(r.title || 'media').replace(/[\\/:*?"<>|]/g, '') + (isZip ? '.zip' : isVid ? '.mp4' : '.mp3')));
       el.innerHTML =
         '<div class="result">' +
           '<div class="rtitle">' + icon(r.mode) + ' ' + esc(r.title) + '</div>' +
           (secs ? '<span class="done-time">✓ הושלם תוך ' + fmt(secs) + '</span>' : '') +
-          (isVid ? '<video controls playsinline src="' + url + '"></video>' : '<audio controls src="' + url + '"></audio>') +
+          (isZip ? '<div class="zipcard"><span class="zi">🗜️</span><div>קובץ ZIP עם כל השירים (' + (blob.size / 1048576).toFixed(1) +
+                   ' MB)<br><span class="muted">אחרי ההורדה: לחיצה ימנית ← חילוץ</span></div></div>'
+           : isVid ? '<video controls playsinline src="' + url + '"></video>' : '<audio controls src="' + url + '"></audio>') +
           '<div class="actions">' +
             '<a class="primary" href="' + url + '" download="' + esc(name) + '">⬇️ הורדה</a>' +
             (blob.size <= MAIL_MAX ? '<button type="button" class="mail">📧 למייל</button>' : '') +
