@@ -1079,6 +1079,26 @@
       let start = r.data ? null : 0, got = 0, size = r.size || 0;
       if (r.data) { parts.push(b64bytes(r.data)); }
       try {
+        if (start !== null && size) {
+          // קובץ גדול (אלבום / וידאו): 3 חלקים במקביל – פי 3 יותר מהר
+          const CH = 6 * 1024 * 1024, starts = [];
+          for (let s = 0; s < size; s += CH) starts.push(s);
+          const got3 = new Array(starts.length);
+          let next = 0;
+          const worker = async () => {
+            while (next < starts.length) {
+              const k = next++;
+              const c = await api({ action: 'chunk', id: jobId, start: starts[k] });
+              got3[k] = b64bytes(c.data);
+              got += got3[k].length;
+              const p = Math.round(got / size * 100);
+              pct.textContent = p + '%'; bar.style.width = p + '%';
+            }
+          };
+          await Promise.all([worker(), worker(), worker()]);
+          parts.push(...got3);
+          start = null;
+        }
         while (start !== null) {
           const c = await api({ action: 'chunk', id: jobId, start });
           const bytes = b64bytes(c.data);
