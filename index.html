@@ -269,6 +269,14 @@
             background: color-mix(in srgb, var(--accent) 22%, transparent); border: 1px solid var(--stroke); }
     .chip button { background: none; border: 0; color: inherit; cursor: pointer; font-size: 13px; padding: 0; opacity: .7; }
     .chip button:hover { opacity: 1; }
+    .sgbox { margin: 10px 0; border: 1px solid var(--stroke); border-radius: 14px; padding: 4px 12px;
+             background: rgba(127,127,127,.06); }
+    .sgbox summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center;
+                     padding: 8px 0; font-size: 14px; font-weight: 500; user-select: none; }
+    .sgbox summary::-webkit-details-marker { display: none; }
+    .sgbox .chev { transition: transform .25s; opacity: .7; }
+    .sgbox[open] .chev { transform: rotate(180deg); }
+    .sgbox .chips { max-height: 45vh; overflow-y: auto; padding-bottom: 6px; }
     .pin { width: 100%; padding: 10px 12px; margin-top: 6px; border-radius: 12px; border: 1px solid var(--stroke);
            background: rgba(255,255,255,.07); color: var(--text); font: inherit; font-size: 14px; }
     .md h4 { margin: 12px 0 6px; font-size: 16px; }
@@ -492,7 +500,11 @@
       <button id="sgAdd" type="button">הוסף</button>
     </div>
     <button class="pbtn" id="sgPreset" type="button">📋 הוסף את רשימת הזמרים החרדיים (כ-50 זמרים)</button>
-    <div class="chips" id="sgList"></div>
+    <details class="sgbox" id="sgBox">
+      <summary><span id="sgSum">🎤 הרשימה</span><span class="chev">▾</span></summary>
+      <input class="pin" id="sgFind" placeholder="🔍 חיפוש זמר ברשימה..." style="margin-top:8px">
+      <div class="chips" id="sgList"></div>
+    </details>
     <div class="ckstat" id="sgStat"></div>
 
     <h3>🔒 שינוי סיסמאות</h3>
@@ -781,9 +793,12 @@
     function drawSingers() {
       $('sgOn').checked = !!singers.on; $('sgVideo').checked = singers.video !== false;
       $('sgList').innerHTML = '';
+      $('sgSum').textContent = '🎤 הרשימה (' + singers.list.length + ' זמרים) – לחץ ' + ($('sgBox').open ? 'לסגירה' : 'לפתיחה');
+      const f = ($('sgFind').value || '').trim().toLowerCase();
       singers.list.forEach((n, i) => {
-        const c = document.createElement('span'); c.className = 'chip';
         const al = (singers.alias || {})[n] || [];
+        if (f && !(n + ' ' + al.join(' ')).toLowerCase().includes(f)) return;
+        const c = document.createElement('span'); c.className = 'chip';
         c.title = al.join(' • ');
         c.innerHTML = '🎤 ' + esc(n) + (al.length ? ' <small style="opacity:.65">· ' + esc(al.slice(0, 2).join(', ')) +
                       (al.length > 2 ? ' +' + (al.length - 2) : '') + '</small>' : '') + ' <button type="button" title="הסר">✕</button>';
@@ -817,6 +832,8 @@
       $('sgName').value = ''; drawSingers(); saveSingers();
     }
     $('sgAdd').onclick = addSinger;
+    $('sgFind').oninput = drawSingers;
+    $('sgBox').ontoggle = drawSingers;
 
     // זמרים חרדיים ודתיים מוכרים (גברים בלבד) – לחיצה אחת מוסיפה את כולם
     const HAREDI = ['מרדכי בן דוד', 'אברהם פריד', 'יעקב שוואקי', 'ליפא שמעלצר', 'בני פרידמן', 'מוטי שטיינמץ',
