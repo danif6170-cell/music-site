@@ -154,6 +154,31 @@
     .modes button.on[data-mode="song"]    { background: var(--accent);  color: #fff; }
     .modes button.on[data-mode="lecture"] { background: var(--accent2); color: #fff; }
     .modes button.on[data-mode="video"]   { background: #0ea5e9; color: #fff; }
+    .modes button.on[data-mode="ai"]      { background: linear-gradient(135deg, #10b981, #0ea5e9); color: #fff; }
+    #aichat { display: none; }
+    .ai #chat { display: none; }
+    .ai #aichat { display: flex; }
+    .me.ai { background: linear-gradient(135deg, #10b981, #047857); }
+    .md p { margin: 0 0 8px; } .md p:last-child { margin: 0; }
+    .md ul, .md ol { margin: 4px 0 8px; padding-inline-start: 20px; }
+    .md code { background: rgba(0,0,0,.3); padding: 1px 5px; border-radius: 6px; font-size: 13px; }
+    .md a { color: #93c5fd; }
+    .aiimg { width: 100%; max-width: 420px; border-radius: 14px; margin-top: 10px; display: block; }
+    .thumb { max-width: 160px; border-radius: 12px; display: block; margin-top: 6px; }
+    .srcs { margin-top: 8px; font-size: 12px; color: var(--muted); }
+    .srcs a { color: var(--muted); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .typing { display: flex; gap: 5px; padding: 6px 2px; }
+    .typing i { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); animation: blink 1.2s infinite; }
+    .typing i:nth-child(2) { animation-delay: .2s; } .typing i:nth-child(3) { animation-delay: .4s; }
+    @keyframes blink { 0%,80%,100% { opacity: .25; } 40% { opacity: 1; } }
+    #attach { width: 54px; border-radius: 14px; border: 1px solid var(--stroke); background: rgba(255,255,255,.07);
+              color: var(--text); font-size: 20px; cursor: pointer; display: none; }
+    .ai #attach { display: block; }
+    #preview { display: none; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 13px; color: var(--muted); }
+    #preview img { height: 48px; border-radius: 8px; }
+    #preview button { background: none; border: 0; color: var(--muted); cursor: pointer; font-size: 16px; }
+    .newchat { align-self: center; font: inherit; font-size: 12px; color: var(--muted); background: rgba(0,0,0,.28);
+               border: 1px solid var(--stroke); border-radius: 99px; padding: 4px 14px; cursor: pointer; }
     form { display: flex; gap: 8px; }
     #q {
       flex: 1; padding: 14px 16px; border-radius: 14px; border: 1px solid var(--stroke);
@@ -257,13 +282,26 @@
       </div>
     </div>
 
+    <div id="aichat" class="chatpane" style="flex:1;overflow-y:auto;padding:18px 14px;flex-direction:column;gap:12px">
+      <div id="aiHistory" style="display:flex;flex-direction:column;gap:12px"></div>
+      <div class="msg bot welcome" id="aiWelcome">
+        <div class="big">🤖</div>
+        <b>שלום! במה אפשר לעזור?</b><br>
+        <span class="muted">שאלות ומידע עדכני מהרשת • 🖼️ "צייר לי..." ליצירת תמונה • 📎 העלאת תמונה לעריכה או לשאלה</span>
+      </div>
+    </div>
+
     <div class="bottom">
+      <div id="preview"><img id="previewImg" alt=""><span>תמונה מצורפת</span><button type="button" id="unattach">✕</button></div>
       <div class="modes">
         <button type="button" data-mode="song" class="on">🎵 שיר</button>
         <button type="button" data-mode="lecture">🎓 הרצאה</button>
         <button type="button" data-mode="video">🎬 וידאו</button>
+        <button type="button" data-mode="ai">🤖 בינה</button>
       </div>
       <form id="f">
+        <button type="button" id="attach" title="צרף תמונה">📎</button>
+        <input type="file" id="aiFile" accept="image/*" hidden>
         <input id="q" placeholder="שם השיר או הזמר..." autocomplete="off">
         <button id="send" title="שלח">➤</button>
       </form>
@@ -531,7 +569,9 @@
       b.onclick = () => {
         mode = b.dataset.mode;
         document.querySelectorAll('.modes button').forEach(x => x.classList.toggle('on', x === b));
-        q.placeholder = { song: 'שם השיר או הזמר...', lecture: 'שם השיעור או קישור...', video: 'שם הסרטון או קישור...' }[mode];
+        q.placeholder = { song: 'שם השיר או הזמר...', lecture: 'שם השיעור או קישור...', video: 'שם הסרטון או קישור...', ai: 'שאל אותי כל דבר...' }[mode];
+        document.body.classList.toggle('ai', mode === 'ai');
+        if (mode === 'ai' && !aiLoaded) loadAiHistory();
         q.focus();
       };
     });
@@ -645,6 +685,7 @@
     $('f').addEventListener('submit', e => {
       e.preventDefault();
       const text = q.value.trim();
+      if (mode === 'ai') return sendAi(text);
       if (!text) return;
       q.value = '';
       runRequest(text, mode);
@@ -720,6 +761,111 @@
         }
       };
     }
+
+
+    /* ================= 🤖 בינה מלאכותית ================= */
+    let aiLoaded = false, aiImage = null;
+    const aiBox = $('aiHistory');
+
+    function md(t) {   // markdown פשוט ובטוח
+      let h = esc(t);
+      h = h.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/`([^`]+)`/g, '<code>$1</code>')
+           .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+      const out = []; let list = null;
+      h.split('\n').forEach(line => {
+        const m = line.match(/^\s*(?:[-*•]|\d+[.)])\s+(.*)/);
+        if (m) { if (!list) { list = []; } list.push('<li>' + m[1] + '</li>'); return; }
+        if (list) { out.push('<ul>' + list.join('') + '</ul>'); list = null; }
+        if (line.trim()) out.push('<p>' + line + '</p>');
+      });
+      if (list) out.push('<ul>' + list.join('') + '</ul>');
+      return out.join('');
+    }
+
+    function aiBubble(role, text, opts) {
+      opts = opts || {};
+      $('aiWelcome').style.display = 'none';
+      const d = document.createElement('div');
+      d.className = 'msg ' + (role === 'u' ? 'me ai' : 'bot');
+      let h = role === 'u' ? esc(text).replace(/\n/g, '<br>') : '<div class="md">' + md(text) + '</div>';
+      if (opts.thumb) h += '<img class="thumb" src="' + opts.thumb + '" alt="">';
+      else if (opts.img && role === 'u') h += '<div class="meta">📎 תמונה מצורפת</div>';
+      if (opts.image) {
+        const src = 'data:' + (opts.mime || 'image/png') + ';base64,' + opts.image;
+        h += '<img class="aiimg" src="' + src + '" alt="">' +
+             '<div class="actions"><a class="primary" href="' + src + '" download="image-' + Date.now() + '.' +
+             ((opts.mime || '').includes('png') ? 'png' : 'jpg') + '">⬇️ הורד תמונה</a></div>';
+      } else if (opts.img && role === 'm') h += '<div class="meta">🖼️ (תמונה – לא נשמרת בענן)</div>';
+      if (opts.src && opts.src.length) {
+        h += '<div class="srcs">מקורות:' + opts.src.map(s =>
+          '<a href="' + esc(s.uri) + '" target="_blank">🔗 ' + esc(s.title || s.uri) + '</a>').join('') + '</div>';
+      }
+      if (opts.t) h += '<div class="meta">' + when(opts.t) + '</div>';
+      d.innerHTML = h;
+      aiBox.appendChild(d);
+      $('aichat').scrollTop = $('aichat').scrollHeight;
+      return d;
+    }
+
+    async function loadAiHistory() {
+      aiLoaded = true;
+      try {
+        const items = (await api({ action: 'aiHistory' })).items || [];
+        aiBox.innerHTML = '';
+        if (!items.length) return;
+        const nb = document.createElement('button');
+        nb.className = 'newchat'; nb.type = 'button'; nb.textContent = '🗑️ שיחה חדשה';
+        nb.onclick = async () => {
+          if (!confirm('למחוק את השיחה ולהתחיל מחדש?')) return;
+          await api({ action: 'aiClear' }).catch(() => {});
+          aiBox.innerHTML = ''; $('aiWelcome').style.display = '';
+        };
+        aiBox.appendChild(nb);
+        items.forEach(m => aiBubble(m.r, m.text, { img: m.img, src: m.src, t: m.t }));
+      } catch (e) { /* נשאר ריק */ }
+    }
+
+    async function sendAi(text) {
+      if (!text && !aiImage) return;
+      const img = aiImage;
+      q.value = ''; clearAttach();
+      aiBubble('u', text, { thumb: img ? 'data:image/jpeg;base64,' + img : null });
+      const wait = aiBubble('m', '');
+      wait.innerHTML = '<div class="typing"><i></i><i></i><i></i></div>';
+      try {
+        const r = await api({ action: 'ai', message: text, image: img || undefined });
+        wait.remove();
+        aiBubble('m', r.reply || '', { image: r.image, mime: r.mime, src: r.sources });
+      } catch (e) {
+        wait.innerHTML = '<span class="err">❌ ' + esc(e.message) + '</span>';
+      }
+    }
+
+    // צירוף תמונה – מוקטנת לפני השליחה
+    $('attach').onclick = () => $('aiFile').click();
+    $('aiFile').onchange = e => {
+      const f = e.target.files[0]; if (!f) return;
+      const im = new Image();
+      im.onload = () => {
+        const max = 1280, sc = Math.min(1, max / Math.max(im.width, im.height));
+        const c = document.createElement('canvas');
+        c.width = Math.round(im.width * sc); c.height = Math.round(im.height * sc);
+        c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+        const url = c.toDataURL('image/jpeg', 0.85);
+        aiImage = url.split(',')[1];
+        $('previewImg').src = url; $('preview').style.display = 'flex';
+        URL.revokeObjectURL(im.src);
+        q.placeholder = 'מה לעשות עם התמונה? (למשל: "תשנה את הרקע לים")';
+        q.focus();
+      };
+      im.src = URL.createObjectURL(f);
+      e.target.value = '';
+    };
+    function clearAttach() {
+      aiImage = null; $('preview').style.display = 'none';
+      if (mode === 'ai') q.placeholder = 'שאל אותי כל דבר...';
+    }
+    $('unattach').onclick = clearAttach;
 
     /* ================= טעינה ================= */
     function loadAll() { loadCloudSettings(); loadHistory(); }
