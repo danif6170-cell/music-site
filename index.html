@@ -55,7 +55,9 @@
       background: linear-gradient(135deg, var(--accent), var(--accent2));
       box-shadow: 0 6px 20px color-mix(in srgb, var(--accent) 50%, transparent);
     }
-    header h1 { margin: 0; font-size: 19px; font-weight: 800; letter-spacing: -.3px; }
+    header h1 { margin: 0; font-size: 19px; font-weight: 800; letter-spacing: -.3px;
+                background: linear-gradient(90deg, var(--text), color-mix(in srgb, var(--accent) 60%, var(--text)));
+                -webkit-background-clip: text; background-clip: text; color: transparent; }
     header small { display: block; color: var(--muted); font-size: 12px; font-weight: 400; }
     .hbtns { margin-inline-start: auto; display: flex; gap: 8px; }
     .icon-btn {
@@ -149,7 +151,7 @@
     }
     .modes { display: flex; gap: 6px; margin-bottom: 10px; padding: 4px; border-radius: 14px; background: rgba(0,0,0,.25); }
     .modes button {
-      flex: 1; padding: 9px; border-radius: 11px; border: 0; background: transparent;
+      flex: 1; padding: 9px 4px; border-radius: 11px; border: 0; background: transparent; white-space: nowrap;
       color: var(--muted); font: inherit; font-size: 15px; font-weight: 500; cursor: pointer; transition: .25s;
     }
     .modes button.on[data-mode="song"]    { background: var(--accent);  color: #fff; }
@@ -172,7 +174,7 @@
     .typing i { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); animation: blink 1.2s infinite; }
     .typing i:nth-child(2) { animation-delay: .2s; } .typing i:nth-child(3) { animation-delay: .4s; }
     @keyframes blink { 0%,80%,100% { opacity: .25; } 40% { opacity: 1; } }
-    #attach { width: 54px; border-radius: 14px; border: 1px solid var(--stroke); background: rgba(255,255,255,.07);
+    #attach { width: 54px; height: 52px; flex: none; border-radius: 14px; border: 1px solid var(--stroke); background: rgba(255,255,255,.07);
               color: var(--text); font-size: 20px; cursor: pointer; display: none; }
     .ai #attach { display: block; }
     #preview { display: none; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 13px; color: var(--muted); }
@@ -180,15 +182,16 @@
     #preview button { background: none; border: 0; color: var(--muted); cursor: pointer; font-size: 16px; }
     .newchat { align-self: center; font: inherit; font-size: 12px; color: var(--muted); background: rgba(0,0,0,.28);
                border: 1px solid var(--stroke); border-radius: 99px; padding: 4px 14px; cursor: pointer; }
-    form { display: flex; gap: 8px; }
+    form { display: flex; gap: 8px; align-items: flex-end; }
     #q {
-      flex: 1; padding: 14px 16px; border-radius: 14px; border: 1px solid var(--stroke);
-      background: rgba(255,255,255,.07); color: var(--text); font: inherit; font-size: 16px; outline: none; transition: .2s;
+      flex: 1; padding: 14px 16px; border-radius: 14px; border: 1px solid var(--stroke); display: block;
+      background: rgba(255,255,255,.07); color: var(--text); font: inherit; font-size: 16px; outline: none; transition: border-color .2s, box-shadow .2s;
+      resize: none; line-height: 1.45; height: 52px; min-height: 52px; max-height: 160px; overflow-y: auto;
     }
     #q:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent); }
     #q::placeholder { color: var(--muted); }
     #send {
-      width: 54px; border: 0; border-radius: 14px; cursor: pointer; font-size: 20px; color: #fff;
+      width: 54px; height: 52px; flex: none; border: 0; border-radius: 14px; cursor: pointer; font-size: 20px; color: #fff;
       background: linear-gradient(135deg, var(--accent), var(--accent2)); transition: .2s;
     }
     #send:hover { transform: scale(1.05); }
@@ -295,7 +298,50 @@
     body.light #chat { scrollbar-color: rgba(0,0,0,.2) transparent; }
     body.light .bot { box-shadow: 0 4px 16px rgba(29,25,51,.06); }
 
+    /* ===== חלון סיסמה בסגנון טרמינל ===== */
+    .pmodal { position: fixed; inset: 0; z-index: 50; display: none; place-items: center; padding: 16px;
+              background: rgba(0,0,0,.55); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+    .pmodal.open { display: grid; animation: fade .2s; }
+    @keyframes fade { from { opacity: 0; } }
+    .pbox { display: block; width: min(380px, 100%); border-radius: 18px; padding: 20px; background: #0d0f14; color: #d1fae5;
+            border: 1px solid rgba(255,255,255,.12); box-shadow: 0 20px 60px rgba(0,0,0,.5); font-family: ui-monospace, Consolas, monospace; }
+    .ptitle { font-family: 'Rubik', sans-serif; font-weight: 700; font-size: 17px; color: #fff; margin-bottom: 14px; }
+    .pline { position: relative; display: flex; align-items: center; gap: 8px; padding: 12px 14px; border-radius: 12px;
+             background: #000; border: 1px solid rgba(110,231,183,.35); font-size: 16px; direction: ltr; cursor: text; }
+    .pline .pr { color: #34d399; }
+    .pline .pcur { width: 9px; height: 18px; background: #34d399; animation: blinkc 1s steps(1) infinite; }
+    @keyframes blinkc { 50% { opacity: 0; } }
+    .secret { color: transparent !important; -webkit-text-fill-color: transparent; caret-color: transparent; text-shadow: none; }
+    .secret::selection { background: transparent; }
+    .secret::placeholder { color: var(--muted); -webkit-text-fill-color: var(--muted); }
+    .pline input { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: transparent; outline: none;
+                   font-size: 16px; padding: 0 14px; }
+    .phint { font-size: 12px; color: #6b7280; margin-top: 8px; font-family: 'Rubik', sans-serif; }
+    .perr { font-size: 13px; color: #fca5a5; margin-top: 6px; font-family: 'Rubik', sans-serif; min-height: 18px; }
+    .pbtns { display: flex; gap: 8px; margin-top: 12px; }
+    .pbtns button { flex: 1; padding: 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.06);
+                    color: #fff; font: inherit; font-family: 'Rubik', sans-serif; cursor: pointer; }
+    .pbtns button.ok { background: #059669; border-color: #059669; }
+
+    /* ===== שיפורים ===== */
+    html { scroll-behavior: smooth; }
+    #chat, #aichat { scroll-behavior: smooth; }
+    .qchips { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 12px; }
+    .qchips button { font: inherit; font-size: 13px; padding: 6px 12px; border-radius: 99px; cursor: pointer; color: var(--text);
+                     background: color-mix(in srgb, var(--accent) 16%, transparent); border: 1px solid var(--stroke); transition: .2s; }
+    .qchips button:hover { background: color-mix(in srgb, var(--accent) 30%, transparent); transform: translateY(-1px); }
+    .copy { font-size: 12px !important; padding: 4px 10px !important; }
+    #send:disabled { opacity: .45; cursor: default; transform: none; }
+    .toast { position: fixed; bottom: 110px; left: 50%; transform: translate(-50%, 20px); z-index: 60; opacity: 0;
+             padding: 10px 18px; border-radius: 99px; background: rgba(15,15,25,.92); color: #fff; font-size: 14px;
+             box-shadow: 0 8px 30px rgba(0,0,0,.35); transition: .3s; pointer-events: none; white-space: nowrap; }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+    .bot { box-shadow: 0 4px 18px rgba(0,0,0,.12); }
+    .msg.me { font-weight: 500; }
+    #q:disabled { opacity: .6; }
+
     @media (max-width: 520px) {
+      .modes button { font-size: 14px; }
       header h1 { font-size: 17px; }
       .msg { max-width: 92%; }
       .timer { font-size: 22px; }
@@ -333,7 +379,14 @@
       <div class="msg bot welcome" id="aiWelcome">
         <div class="big">🤖</div>
         <b>שלום! במה אפשר לעזור?</b><br>
-        <span class="muted">שאלות ומידע עדכני מהרשת • 🖼️ "צייר לי..." ליצירת תמונה • 📎 העלאת תמונה לעריכה או לשאלה</span>
+        <span class="muted">שאלות ומידע עדכני מהרשת • 🖼️ "צייר לי..." ליצירת תמונה • 📎 העלאת תמונה לעריכה או לשאלה<br>
+          Enter לשליחה • Shift+Enter לשורה חדשה</span>
+        <div class="qchips" id="aiChips">
+          <button type="button">🕯️ מתי כניסת שבת השבוע בירושלים?</button>
+          <button type="button">✍️ כתוב לי ברכה יפה לחתן</button>
+          <button type="button">🖼️ צייר לי נוף של הכותל בשקיעה</button>
+          <button type="button">💡 תסביר לי מה זה בינה מלאכותית</button>
+        </div>
       </div>
     </div>
 
@@ -348,11 +401,25 @@
       <form id="f">
         <button type="button" id="attach" title="צרף תמונה">📎</button>
         <input type="file" id="aiFile" accept="image/*" hidden>
-        <input id="q" placeholder="שם השיר או הזמר..." autocomplete="off">
+        <textarea id="q" rows="1" placeholder="שם השיר או הזמר..." autocomplete="off" enterkeyhint="send"></textarea>
         <button id="send" title="שלח">➤</button>
       </form>
     </div>
   </div>
+
+  <!-- ===== חלון סיסמה ===== -->
+  <div class="pmodal" id="pmodal">
+    <form class="pbox" id="pform" autocomplete="off">
+      <div class="ptitle" id="ptitle">🔒 סיסמה</div>
+      <label class="pline"><span class="pr">$</span><span class="pcur"></span>
+        <input id="pin" class="secret" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="סיסמה">
+      </label>
+      <div class="phint">התווים לא מוצגים בכלל (כמו בטרמינל). הקלד ולחץ Enter.</div>
+      <div class="perr" id="perr"></div>
+      <div class="pbtns"><button type="submit" class="ok">אישור</button><button type="button" id="pcancel">ביטול</button></div>
+    </form>
+  </div>
+  <div class="toast" id="toast"></div>
 
   <!-- ===== לוח עיצוב ===== -->
   <div class="panel-bg" id="panelBg"></div>
@@ -424,13 +491,15 @@
       <input id="sgName" placeholder="שם זמר (ולחץ הוסף)" style="direction:rtl">
       <button id="sgAdd" type="button">הוסף</button>
     </div>
+    <button class="pbtn" id="sgPreset" type="button">📋 הוסף את רשימת הזמרים החרדיים (כ-50 זמרים)</button>
     <div class="chips" id="sgList"></div>
     <div class="ckstat" id="sgStat"></div>
 
     <h3>🔒 שינוי סיסמאות</h3>
-    <input class="pin" id="newKey" type="password" autocomplete="new-password" placeholder="סיסמה חדשה לאתר (להשאיר ריק = בלי שינוי)">
-    <input class="pin" id="newKey2" type="password" autocomplete="new-password" placeholder="שוב את הסיסמה החדשה לאתר">
-    <input class="pin" id="newDesign" type="password" autocomplete="new-password" placeholder="סיסמה חדשה לעיצוב (להשאיר ריק = בלי שינוי)">
+    <input id="newKey" type="password" class="pin secret" autocomplete="new-password" placeholder="סיסמה חדשה לאתר (להשאיר ריק = בלי שינוי)">
+    <input id="newKey2" type="password" class="pin secret" autocomplete="new-password" placeholder="שוב את הסיסמה החדשה לאתר">
+    <input id="newDesign" type="password" class="pin secret" autocomplete="new-password" placeholder="סיסמה חדשה לעיצוב (להשאיר ריק = בלי שינוי)">
+    <div class="help">כמו בטרמינל – התווים לא מוצגים בזמן ההקלדה.</div>
     <button class="pbtn primary" id="passSave" type="button">🔒 שנה סיסמה</button>
 
     <h3>היסטוריה</h3>
@@ -448,25 +517,55 @@
     let mode = 'song';
 
     /* ================= API וסיסמה ================= */
-    function getKey() {
-      let k = localStorage.getItem('musicKey');
-      if (!k) {
-        k = prompt('סיסמה לבוט:') || '';
-        if (k) localStorage.setItem('musicKey', k);
-      }
-      return k;
+    // חלון סיסמה בסגנון טרמינל – לא רואים את התווים ולא את הכמות שלהם
+    let passWait = null;
+    function askPass(title, err) {
+      if (passWait) return passWait;
+      passWait = new Promise(done => {
+        $('ptitle').textContent = title; $('perr').textContent = err || ''; $('pin').value = '';
+        $('pmodal').classList.add('open');
+        setTimeout(() => $('pin').focus(), 50);
+        const finish = v => { $('pmodal').classList.remove('open'); $('pin').value = ''; passWait = null; done(v); };
+        $('pform').onsubmit = e => { e.preventDefault(); finish($('pin').value.trim() || null); };
+        $('pcancel').onclick = () => finish(null);
+      });
+      return passWait;
     }
-    $('logout').onclick = () => { localStorage.removeItem('musicKey'); getKey(); loadAll(); };
+    $('pmodal').onclick = e => { if (e.target === $('pmodal')) $('pin').focus(); };
 
-    async function api(body) {
+    let keyAsk = null;
+    async function getKey(err) {
+      const k = localStorage.getItem('musicKey');
+      if (k) return k;
+      if (!keyAsk) keyAsk = askPass('🔒 סיסמה לבוט', err).then(v => { keyAsk = null; if (v) localStorage.setItem('musicKey', v); return v || ''; });
+      return keyAsk;
+    }
+    $('logout').onclick = () => { localStorage.removeItem('musicKey'); loadAll(); };
+
+    function toast(t) {
+      const el = $('toast'); el.textContent = t; el.classList.add('show');
+      clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('show'), 2200);
+    }
+    function b64bytes(s) {   // מהיר יותר מ-Uint8Array.from עם פונקציה
+      const bin = atob(s), u = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+      return u;
+    }
+
+    async function api(body, retried) {
+      const key = await getKey();
+      if (!key) throw new Error('צריך סיסמה – לחץ על 🔑 למעלה');
       const res = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ ...body, key: getKey() })
+        body: JSON.stringify({ ...body, key })
       });
       const data = await res.json();
       if (data.error) {
-        if (data.error === 'סיסמה שגויה') localStorage.removeItem('musicKey');
+        if (data.error === 'סיסמה שגויה') {
+          localStorage.removeItem('musicKey');
+          if (!retried) { await getKey('❌ סיסמה שגויה, נסה שוב'); return api(body, true); }
+        }
         throw new Error(data.error);
       }
       return data;
@@ -634,13 +733,12 @@
     // לוח העיצוב נעול בסיסמה נפרדת
     const openP = o => { $('panel').classList.toggle('open', o); $('panelBg').classList.toggle('open', o); };
     $('openPanel').onclick = async () => {
-      if (!designKey) {
-        const k = prompt('🔒 סיסמה לשינוי העיצוב:');
+      let err = '';
+      while (!designKey) {
+        const k = await askPass('🎨 סיסמה לשינוי העיצוב', err);
         if (!k) return;
-        try { await api({ action: 'checkDesign', designKey: k }); }
-        catch (e) { return alert(e.message); }
-        designKey = k;
-        sessionStorage.setItem('designKey', k);
+        try { await api({ action: 'checkDesign', designKey: k }); designKey = k; sessionStorage.setItem('designKey', k); }
+        catch (e) { err = '❌ ' + e.message; }
       }
       openP(true);
       loadCk();
@@ -719,6 +817,23 @@
       $('sgName').value = ''; drawSingers(); saveSingers();
     }
     $('sgAdd').onclick = addSinger;
+
+    // זמרים חרדיים ודתיים מוכרים (גברים בלבד) – לחיצה אחת מוסיפה את כולם
+    const HAREDI = ['מרדכי בן דוד', 'אברהם פריד', 'יעקב שוואקי', 'ליפא שמעלצר', 'בני פרידמן', 'מוטי שטיינמץ',
+      'ישי לפידות', 'שולם למר', 'מרדכי שפירא', 'יונתן רזאל', 'אהרן רזאל', 'דודי קאליש', 'מנדי ג\'רופי', 'חיים ישראל',
+      'נפתלי קמפה', 'בני לאופר', 'איציק דדיה', 'איציק אורלב', 'גד אלבז', 'אוהד מושקוביץ', 'שמילי אונגר', 'ברי וובר',
+      'שלומי גרטנר', 'מיילך קאהן', 'פיני איינהורן', 'שרגא גסטטנר', 'לוי פלקוביץ', 'יהודה גרין', 'זנוויל ויינברגר',
+      'אברימי רוט', 'ארי היל', 'אלי הרצליך', 'ניסים בלאק', 'יוני Z', 'ברוך לוין', 'ארי גולדוואג', 'מיכאל פרוזנסקי',
+      'דובי מייזלס', 'שלומי דסקל', 'איצי ולדנר', 'יואלי גרינפלד', 'אריה קונסטלר', 'שמחה ליינר', 'איתן כץ', 'דוד גבאי',
+      'מונה רוזנבלום', 'עמירן דביר', 'חיים בנט', 'יצחק מאיר', 'ישראל דגן', 'מקהלת מלכות', 'מקהלת ידידים',
+      'מקהלת מיאמי', 'מקהלת ישיבה בויז'];
+    $('sgPreset').onclick = () => {
+      const have = new Set(singers.list.map(x => x.toLowerCase()));
+      const add = HAREDI.filter(n => !have.has(n.toLowerCase()));
+      if (!add.length) return toast('כל הזמרים כבר ברשימה');
+      singers.list.push(...add); drawSingers(); saveSingers();
+      toast('➕ נוספו ' + add.length + ' זמרים – מזהה שמות באנגלית (כחצי דקה)');
+    };
     $('sgName').onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); addSinger(); } };
     $('sgOn').onchange = e => { singers.on = e.target.checked; drawSingers(); saveSingers(); };
     $('sgVideo').onchange = e => { singers.video = e.target.checked; saveSingers(); };
@@ -781,6 +896,7 @@
         q.placeholder = { song: 'שם השיר או הזמר...', lecture: 'שם השיעור או קישור...', video: 'שם הסרטון או קישור...', ai: 'שאל אותי כל דבר...' }[mode];
         document.body.classList.toggle('ai', mode === 'ai');
         if (mode === 'ai' && !aiLoaded) loadAiHistory();
+        fitQ();
         q.focus();
       };
     });
@@ -868,10 +984,10 @@
 
     function statusFor(sec, m) {
       if (sec < 4)  return 'שולח לשרת...';
-      if (sec < 20) return 'מדליק את השרת...';
-      if (sec < 30) return 'מחפש ביוטיוב...';
-      if (sec < 45) return m === 'lecture' ? 'מוריד את ההרצאה...' : m === 'video' ? 'מוריד את הסרטון...' : 'מוריד את השיר...';
-      if (sec < 60) return m === 'video' ? 'מחבר תמונה וקול...' : 'ממיר ל-MP3...';
+      if (sec < 18) return 'מדליק את השרת...';
+      if (sec < 23) return 'מחפש ביוטיוב...';
+      if (sec < 36) return m === 'lecture' ? 'מוריד את ההרצאה...' : m === 'video' ? 'מוריד את הסרטון...' : 'מוריד את השיר...';
+      if (sec < 60) return m === 'video' ? 'מחבר תמונה וקול...' : 'ממיר ל-MP3 ושולח אליך...';
       if (sec < 120) return 'כמעט שם...';
       return m === 'lecture' ? 'הרצאה ארוכה – עוד קצת סבלנות...' : 'עוד רגע...';
     }
@@ -894,16 +1010,28 @@
     $('f').addEventListener('submit', e => {
       e.preventDefault();
       const text = q.value.trim();
-      if (mode === 'ai') return sendAi(text);
+      if (mode === 'ai') { sendAi(text); fitQ(); return; }
       if (!text) return;
-      q.value = '';
-      runRequest(text, mode);
+      q.value = ''; fitQ();
+      runRequest(text.replace(/\s*\n\s*/g, ' '), mode);
     });
 
-    // בודק כל 2 שניות אם הקובץ מוכן (עד 15 דקות)
+    // תיבת הקלדה שגדלה לבד; Enter = שליחה, Shift+Enter = שורה חדשה
+    function fitQ() {
+      q.style.height = 'auto';
+      q.style.height = Math.min(Math.max(q.scrollHeight + 2, 52), 160) + 'px';
+      $('send').disabled = !q.value.trim() && !(mode === 'ai' && aiImage);
+    }
+    q.addEventListener('input', fitQ);
+    q.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); $('f').requestSubmit(); }
+    });
+    document.querySelectorAll('#aiChips button').forEach(b => b.onclick = () => { q.value = b.textContent.replace(/^\S+\s/, ''); $('f').requestSubmit(); });
+
+    // בודק כל שנייה וחצי אם הקובץ מוכן (עד 15 דקות)
     async function waitForJob(id) {
-      for (let i = 0; i < 450; i++) {
-        await new Promise(r => setTimeout(r, 2000));
+      for (let i = 0; i < 600; i++) {
+        await new Promise(r => setTimeout(r, i < 15 ? 2500 : 1500));
         let r;
         try { r = await api({ action: 'status', id }); }
         catch (e) { if (e.message === 'סיסמה שגויה') throw e; continue; }
@@ -919,11 +1047,11 @@
       const pct = el.querySelector('.pct'), bar = el.querySelector('.bar i');
       const parts = [];
       let start = r.data ? null : 0, got = 0, size = r.size || 0;
-      if (r.data) { parts.push(Uint8Array.from(atob(r.data), ch => ch.charCodeAt(0))); }
+      if (r.data) { parts.push(b64bytes(r.data)); }
       try {
         while (start !== null) {
           const c = await api({ action: 'chunk', id: jobId, start });
-          const bytes = Uint8Array.from(atob(c.data), ch => ch.charCodeAt(0));
+          const bytes = b64bytes(c.data);
           parts.push(bytes);
           got += bytes.length; size = c.size || size;
           const p = size ? Math.round(got / size * 100) : 100;
@@ -1012,26 +1140,35 @@
           '<a href="' + esc(s.uri) + '" target="_blank">🔗 ' + esc(s.title || s.uri) + '</a>').join('') + '</div>';
       }
       if (opts.t) h += '<div class="meta">' + when(opts.t) + '</div>';
+      if (role !== 'u' && text) h += '<div class="actions"><button type="button" class="copy">📋 העתק</button></div>';
       d.innerHTML = h;
+      const cp = d.querySelector('.copy');
+      if (cp) cp.onclick = () => navigator.clipboard.writeText(text).then(() => toast('✅ הועתק'), () => toast('לא הצלחתי להעתיק'));
+      if (!aiBox.querySelector('.newchat')) aiBox.prepend(newChatBtn());
       aiBox.appendChild(d);
       $('aichat').scrollTop = $('aichat').scrollHeight;
       return d;
+    }
+
+    function newChatBtn() {
+      const nb = document.createElement('button');
+      nb.className = 'newchat'; nb.type = 'button'; nb.textContent = '🗑️ שיחה חדשה';
+      nb.onclick = async () => {
+        if (!confirm('למחוק את השיחה ולהתחיל מחדש?')) return;
+        await api({ action: 'aiClear' }).catch(() => {});
+        aiBox.innerHTML = ''; $('aiWelcome').style.display = '';
+        toast('🗑️ השיחה נמחקה');
+      };
+      return nb;
     }
 
     async function loadAiHistory() {
       aiLoaded = true;
       try {
         const items = (await api({ action: 'aiHistory' })).items || [];
+        if (aiBox.children.length) return;   // כבר התחלת לכתוב לפני שההיסטוריה נטענה
         aiBox.innerHTML = '';
         if (!items.length) return;
-        const nb = document.createElement('button');
-        nb.className = 'newchat'; nb.type = 'button'; nb.textContent = '🗑️ שיחה חדשה';
-        nb.onclick = async () => {
-          if (!confirm('למחוק את השיחה ולהתחיל מחדש?')) return;
-          await api({ action: 'aiClear' }).catch(() => {});
-          aiBox.innerHTML = ''; $('aiWelcome').style.display = '';
-        };
-        aiBox.appendChild(nb);
         items.forEach(m => aiBubble(m.r, m.text, { img: m.img, src: m.src, t: m.t }));
       } catch (e) { /* נשאר ריק */ }
     }
@@ -1064,7 +1201,7 @@
         c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
         const url = c.toDataURL('image/jpeg', 0.85);
         aiImage = url.split(',')[1];
-        $('previewImg').src = url; $('preview').style.display = 'flex';
+        $('previewImg').src = url; $('preview').style.display = 'flex'; fitQ();
         URL.revokeObjectURL(im.src);
         q.placeholder = 'מה לעשות עם התמונה? (למשל: "תשנה את הרקע לים")';
         q.focus();
@@ -1075,11 +1212,16 @@
     function clearAttach() {
       aiImage = null; $('preview').style.display = 'none';
       if (mode === 'ai') q.placeholder = 'שאל אותי כל דבר...';
+      fitQ();
     }
     $('unattach').onclick = clearAttach;
 
     /* ================= טעינה ================= */
-    function loadAll() { loadCloudSettings(); loadHistory(); }
+    function loadAll() {
+      loadCloudSettings(); loadHistory();
+      if (mode === 'ai') { aiLoaded = false; aiBox.innerHTML = ''; loadAiHistory(); }
+    }
+    fitQ();
     loadAll();
   </script>
 </body>
