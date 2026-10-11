@@ -354,6 +354,17 @@
     <textarea class="ck" id="ckLevy" placeholder="cookies של aharonlevy.co.il (אופציונלי)"></textarea>
     <button class="pbtn primary" id="ckSave" type="button">💾 שמור חיבור</button>
 
+    <h3>🔑 מפתחות לבינה מלאכותית</h3>
+    <div class="ckstat" id="keyStat">...</div>
+    <div class="help">
+      🖼️ ציור תמונות: מפתח מ-<b>enter.pollinations.ai</b> (מתחיל ב-sk_ או pk_)<br>
+      🔎 חיפוש ברשת: מפתח חינמי מ-<b>app.tavily.com</b> (מתחיל ב-tvly-, 1000 חיפושים בחודש, בלי אשראי)<br>
+      המפתחות נשמרים בדרייב שלך ולא מוצגים שוב. להשאיר ריק = בלי שינוי.
+    </div>
+    <input class="ck" style="height:auto" id="keyImg" type="password" autocomplete="off" placeholder="מפתח Pollinations (ציור תמונות)">
+    <input class="ck" style="height:auto" id="keySearch" type="password" autocomplete="off" placeholder="מפתח Tavily (חיפוש ברשת)">
+    <button class="pbtn primary" id="keySave" type="button">💾 שמור מפתחות</button>
+
     <h3>היסטוריה</h3>
     <button class="pbtn danger" id="clearHist" type="button">🗑️ מחק את כל ההיסטוריה</button>
     <button class="pbtn" id="lockPanel" type="button">🔒 נעל עיצוב</button>
@@ -520,6 +531,7 @@
       }
       openP(true);
       loadCk();
+      loadKeys();
     };
     $('closePanel').onclick = () => openP(false);
 
@@ -551,6 +563,27 @@
       setTimeout(() => { $('ckSave').disabled = false; $('ckSave').textContent = '💾 שמור חיבור'; }, 2500);
     };
     $('panelBg').onclick = () => openP(false);
+
+    // ===== מפתחות לבינה מלאכותית =====
+    function showKeys(k) {
+      $('keyStat').innerHTML = (k.IMAGE_KEY ? '✅ ציור תמונות מחובר' : '⚪ ציור תמונות לא מחובר') + '<br>' +
+                               (k.SEARCH_KEY ? '✅ חיפוש ברשת מחובר' : '⚪ חיפוש ברשת לא מחובר');
+    }
+    async function loadKeys() {
+      try { showKeys(await api({ action: 'keyStatus', designKey })); } catch (e) { $('keyStat').textContent = '❌ ' + e.message; }
+    }
+    $('keySave').onclick = async () => {
+      const keys = { IMAGE_KEY: $('keyImg').value.trim(), SEARCH_KEY: $('keySearch').value.trim() };
+      if (!keys.IMAGE_KEY && !keys.SEARCH_KEY) return alert('הדבק קודם מפתח');
+      if (keys.SEARCH_KEY && !/^tvly-/.test(keys.SEARCH_KEY)) return alert('מפתח Tavily מתחיל ב-tvly-');
+      $('keySave').disabled = true; $('keySave').textContent = 'שומר...';
+      try {
+        showKeys(await api({ action: 'saveKeys', designKey, keys }));
+        $('keyImg').value = ''; $('keySearch').value = '';
+        $('keySave').textContent = '✅ נשמר';
+      } catch (e) { $('keySave').textContent = '❌ ' + e.message; }
+      setTimeout(() => { $('keySave').disabled = false; $('keySave').textContent = '💾 שמור מפתחות'; }, 2500);
+    };
     $('lockPanel').onclick = () => { designKey = ''; sessionStorage.removeItem('designKey'); openP(false); };
 
     $('clearHist').onclick = async () => {
