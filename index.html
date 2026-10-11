@@ -1019,6 +1019,7 @@
       if (sec < 36) return m === 'lecture' ? 'מוריד את ההרצאה...' : m === 'video' ? 'מוריד את הסרטון...' : 'מוריד את השיר...';
       if (sec < 60) return m === 'video' ? 'מחבר תמונה וקול...' : 'ממיר ל-MP3 ושולח אליך...';
       if (sec < 120) return 'כמעט שם...';
+      if (sec > 300) return 'לוקח יותר מהרגיל – בודק שהשרת עדיין עובד...';
       return m === 'lecture' ? 'הרצאה ארוכה – עוד קצת סבלנות...' : 'עוד רגע...';
     }
 
@@ -1058,17 +1059,25 @@
     });
     document.querySelectorAll('#aiChips button').forEach(b => b.onclick = () => { q.value = b.textContent.replace(/^\S+\s/, ''); $('f').requestSubmit(); });
 
-    // בודק כל שנייה וחצי אם הקובץ מוכן (עד 15 דקות)
+    // בודק כל שנייה וחצי אם הקובץ מוכן. גוגל בודק בעצמו אם השרת נפל ומחזיר את הסיבה;
+    // בכל מקרה – אחרי 16 דקות, או אם אין חיבור לגוגל 2 דקות ברצף – עוצרים ומסבירים
     async function waitForJob(id) {
-      for (let i = 0; i < 600; i++) {
-        await new Promise(r => setTimeout(r, i < 15 ? 2500 : 1500));
+      const t0 = Date.now();
+      let lastOk = Date.now(), i = 0;
+      while (Date.now() - t0 < 16 * 60 * 1000) {
+        await new Promise(r => setTimeout(r, i++ < 15 ? 2500 : 1500));
         let r;
-        try { r = await api({ action: 'status', id }); }
-        catch (e) { if (e.message === 'סיסמה שגויה') throw e; continue; }
+        try { r = await api({ action: 'status', id }); lastOk = Date.now(); }
+        catch (e) {
+          if (e.message === 'סיסמה שגויה') throw e;
+          if (Date.now() - lastOk > 2 * 60 * 1000)
+            throw new Error('📡 אין חיבור לשרת של גוגל כבר 2 דקות (בעיית אינטרנט או נטפרי). בדוק את החיבור ונסה שוב.');
+          continue;
+        }
         if (r.status === 'done') return r;
         if (r.status === 'error') throw new Error(r.error || 'ההורדה נכשלה');
       }
-      throw new Error('לוקח יותר מדי זמן – נסה שוב בעוד כמה דקות');
+      throw new Error('⏱️ ההורדה נתקעה יותר מ-16 דקות ולכן הופסקה. נסה שוב בעוד כמה דקות.');
     }
 
     // מוריד את הקובץ אליך בחלקים, ואז מוחק אותו מהענן
