@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0a14">
   <title>בוט השירים</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700;800&display=swap" rel="stylesheet">
@@ -249,6 +250,51 @@
           background: rgba(255,255,255,.07); color: var(--text); font: 12px monospace; direction: ltr; resize: vertical; }
     .ckstat { font-size: 13px; margin: 6px 0 2px; }
     .help { font-size: 12px; color: var(--muted); line-height: 1.6; margin: 6px 0; }
+    /* ===== ערכות עיצוב ===== */
+    .themes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .th { border-radius: 14px; border: 2px solid transparent; cursor: pointer; padding: 0; overflow: hidden;
+          background: none; color: var(--text); font: inherit; font-size: 12px; transition: .2s; }
+    .th:hover { transform: translateY(-2px); }
+    .th.on { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 40%, transparent); }
+    .th .pv { height: 46px; display: flex; align-items: flex-end; gap: 4px; padding: 6px; }
+    .th .pv i { width: 14px; height: 14px; border-radius: 50%; box-shadow: 0 1px 4px rgba(0,0,0,.3); }
+    .th .nm { display: block; padding: 5px 2px; background: rgba(127,127,127,.12); }
+
+    /* ===== זמרים מותרים ===== */
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+    .chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 99px; font-size: 13px;
+            background: color-mix(in srgb, var(--accent) 22%, transparent); border: 1px solid var(--stroke); }
+    .chip button { background: none; border: 0; color: inherit; cursor: pointer; font-size: 13px; padding: 0; opacity: .7; }
+    .chip button:hover { opacity: 1; }
+    .pin { width: 100%; padding: 10px 12px; margin-top: 6px; border-radius: 12px; border: 1px solid var(--stroke);
+           background: rgba(255,255,255,.07); color: var(--text); font: inherit; font-size: 14px; }
+    .md h4 { margin: 12px 0 6px; font-size: 16px; }
+    .md h4:first-child { margin-top: 0; }
+
+    /* ===== מצב בהיר ===== */
+    body.light {
+      --text: #1d1933; --muted: rgba(29,25,51,.62);
+      --glass: rgba(255,255,255,.66); --glass-strong: rgba(255,255,255,.84); --stroke: rgba(29,25,51,.12);
+      background: #f4f4f8;
+    }
+    body.light #bgShade { background: rgba(255,255,255,var(--overlay)); }
+    body.light .icon-btn, body.light .actions a, body.light .actions button, body.light #attach, body.light #q,
+    body.light .pbtn, body.light .urlrow input, body.light .ck, body.light .pin { background: rgba(29,25,51,.05); }
+    body.light .icon-btn:hover, body.light .pbtn:hover, body.light .actions a:hover, body.light .actions button:hover { background: rgba(29,25,51,.1); }
+    body.light .actions .primary, body.light .pbtn.primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); }
+    body.light .modes, body.light .newchat, body.light .divider { background: rgba(29,25,51,.07); }
+    body.light .panel { background: rgba(255,255,255,.96); }
+    body.light .panel-bg { background: rgba(0,0,0,.25); }
+    body.light .bar { background: rgba(29,25,51,.1); }
+    body.light .md code { background: rgba(29,25,51,.08); }
+    body.light .md a { color: #2563eb; }
+    body.light .err { color: #e11d48; }
+    body.light .done-time { color: #15803d; background: rgba(34,197,94,.15); }
+    body.light .pbtn.danger { color: #dc2626; }
+    body.light .sw.on { border-color: #1d1933; }
+    body.light #chat { scrollbar-color: rgba(0,0,0,.2) transparent; }
+    body.light .bot { box-shadow: 0 4px 16px rgba(29,25,51,.06); }
+
     @media (max-width: 520px) {
       header h1 { font-size: 17px; }
       .msg { max-width: 92%; }
@@ -314,6 +360,10 @@
     <h2>🎨 עיצוב <button class="icon-btn" id="closePanel" type="button">✕</button></h2>
     <div class="sync" id="syncStatus">☁️ כל שינוי נשמר בענן ומסתנכרן לכל המכשירים</div>
 
+    <h3>ערכות עיצוב</h3>
+    <div class="themes" id="themes"></div>
+    <div class="switch"><span>☀️ מצב בהיר</span><input type="checkbox" id="lightMode"></div>
+
     <h3>רקעים מוכנים</h3>
     <div class="swatches" id="presets"></div>
 
@@ -364,6 +414,24 @@
     <input class="ck" style="height:auto" id="keyImg" type="password" autocomplete="off" placeholder="מפתח Pollinations (ציור תמונות)">
     <input class="ck" style="height:auto" id="keySearch" type="password" autocomplete="off" placeholder="מפתח Tavily (חיפוש ברשת)">
     <button class="pbtn primary" id="keySave" type="button">💾 שמור מפתחות</button>
+
+    <h3>🎤 זמרים מותרים</h3>
+    <div class="help">כשזה מופעל – הבוט מוריד רק שירים של הזמרים שברשימה, וכל השאר נחסם (גם בקישור ישיר וגם במייל).
+      אפשר כמה שמות לאותו זמר עם / למשל: <b>ישי ריבו / Ishay Ribo</b></div>
+    <div class="switch"><span>הורד רק מזמרים שברשימה</span><input type="checkbox" id="sgOn"></div>
+    <div class="switch"><span>להחיל גם על 🎬 וידאו</span><input type="checkbox" id="sgVideo" checked></div>
+    <div class="urlrow">
+      <input id="sgName" placeholder="שם זמר (ולחץ הוסף)" style="direction:rtl">
+      <button id="sgAdd" type="button">הוסף</button>
+    </div>
+    <div class="chips" id="sgList"></div>
+    <div class="ckstat" id="sgStat"></div>
+
+    <h3>🔒 שינוי סיסמאות</h3>
+    <input class="pin" id="newKey" type="password" autocomplete="new-password" placeholder="סיסמה חדשה לאתר (להשאיר ריק = בלי שינוי)">
+    <input class="pin" id="newKey2" type="password" autocomplete="new-password" placeholder="שוב את הסיסמה החדשה לאתר">
+    <input class="pin" id="newDesign" type="password" autocomplete="new-password" placeholder="סיסמה חדשה לעיצוב (להשאיר ריק = בלי שינוי)">
+    <button class="pbtn primary" id="passSave" type="button">🔒 שנה סיסמה</button>
 
     <h3>היסטוריה</h3>
     <button class="pbtn danger" id="clearHist" type="button">🗑️ מחק את כל ההיסטוריה</button>
@@ -419,7 +487,29 @@
       'radial-gradient(circle at 30% 20%, #4c1d95, #0b0a14 70%)',
       'linear-gradient(160deg, #0b0a14, #1f2937)'
     ];
-    const DEFAULTS = { bg: PRESETS[0], overlay: 35, blur: 0, accent: '#8b5cf6', accent2: '#ec4899', anim: false };
+    const DEFAULTS = { bg: PRESETS[0], overlay: 35, blur: 0, accent: '#8b5cf6', accent2: '#ec4899', anim: false, light: false };
+
+    // ערכות עיצוב מוכנות – לחיצה אחת משנה רקע, צבעים ומצב בהיר/כהה
+    const THEMES = [
+      { n: 'סגול לילה', bg: PRESETS[0], accent: '#8b5cf6', accent2: '#ec4899', overlay: 35 },
+      { n: 'אוקיינוס',  bg: 'linear-gradient(135deg, #0f2027, #203a43 50%, #2c5364)', accent: '#06b6d4', accent2: '#3b82f6', overlay: 30 },
+      { n: 'יער',       bg: 'linear-gradient(135deg, #0b3d2e, #134e5e 50%, #2d6a4f)', accent: '#22c55e', accent2: '#eab308', overlay: 30 },
+      { n: 'שקיעה',     bg: 'linear-gradient(135deg, #3a1c71, #d76d77 50%, #ffaf7b)', accent: '#f97316', accent2: '#e11d48', overlay: 35 },
+      { n: 'זהב שחור',  bg: 'linear-gradient(160deg, #0a0a0a, #1c1917 60%, #292524)', accent: '#d4a017', accent2: '#b45309', overlay: 20 },
+      { n: 'חצות',      bg: 'linear-gradient(135deg, #000428, #004e92)', accent: '#60a5fa', accent2: '#a78bfa', overlay: 30 },
+      { n: 'יין',       bg: 'linear-gradient(135deg, #200122, #6f0000)', accent: '#f43f5e', accent2: '#fb923c', overlay: 30 },
+      { n: 'פלדה',      bg: 'linear-gradient(135deg, #141e30, #243b55)', accent: '#94a3b8', accent2: '#38bdf8', overlay: 25 },
+      { n: 'אמרלד',     bg: 'radial-gradient(circle at 20% 20%, #065f46, #022c22 70%)', accent: '#10b981', accent2: '#14b8a6', overlay: 25 },
+      { n: 'בהיר נקי',  bg: 'linear-gradient(135deg, #f8fafc, #e2e8f0)', accent: '#6366f1', accent2: '#ec4899', overlay: 10, light: true },
+      { n: 'שמיים',     bg: 'linear-gradient(160deg, #e0f2fe, #f0f9ff 60%, #ffffff)', accent: '#0284c7', accent2: '#6366f1', overlay: 10, light: true },
+      { n: 'מנטה',      bg: 'linear-gradient(135deg, #ecfdf5, #d1fae5)', accent: '#059669', accent2: '#0ea5e9', overlay: 10, light: true },
+      { n: 'אפרסק',     bg: 'linear-gradient(135deg, #fff7ed, #fde2e4)', accent: '#f97316', accent2: '#e11d48', overlay: 10, light: true },
+      { n: 'לבנדר',     bg: 'linear-gradient(135deg, #f5f3ff, #ede9fe 60%, #fae8ff)', accent: '#7c3aed', accent2: '#db2777', overlay: 10, light: true },
+      { n: 'ירושלים',   bg: 'linear-gradient(135deg, #faf6ee, #e9dfcb)', accent: '#a16207', accent2: '#1e3a8a', overlay: 8, light: true },
+      { n: 'חול',       bg: 'linear-gradient(135deg, #fefce8, #f5f5f4)', accent: '#b45309', accent2: '#57534e', overlay: 8, light: true },
+      { n: 'ורוד עדין', bg: 'linear-gradient(135deg, #fdf2f8, #fce7f3 50%, #ede9fe)', accent: '#db2777', accent2: '#8b5cf6', overlay: 8, light: true },
+      { n: 'אפור לבן',  bg: 'linear-gradient(180deg, #ffffff, #f1f5f9)', accent: '#0f172a', accent2: '#64748b', overlay: 0, light: true }
+    ];
 
     function cached() {
       try { return Object.assign({}, DEFAULTS, JSON.parse(localStorage.getItem('musicTheme') || '{}')); }
@@ -456,11 +546,17 @@
       root.setProperty('--blur', theme.blur + 'px');
       root.setProperty('--accent', theme.accent);
       root.setProperty('--accent2', theme.accent2);
+      document.body.classList.toggle('light', !!theme.light);
+      const mc = document.querySelector('meta[name=theme-color]');
+      if (mc) mc.content = theme.light ? '#f4f4f8' : '#0b0a14';
 
       $('overlay').value = theme.overlay; $('overlayV').textContent = theme.overlay + '%';
       $('blur').value = theme.blur;       $('blurV').textContent = theme.blur;
       $('accent').value = theme.accent;   $('accent2').value = theme.accent2;
       $('anim').checked = !!theme.anim;
+      $('lightMode').checked = !!theme.light;
+      document.querySelectorAll('.th').forEach(t => t.classList.toggle('on',
+        t.dataset.bg === theme.bg && t.dataset.a === theme.accent));
       document.querySelectorAll('.sw').forEach(s => s.classList.toggle('on', s.dataset.bg === theme.bg));
     }
 
@@ -476,6 +572,23 @@
     }
 
     function setBg(value) { theme.bg = value; applyTheme(); saveTheme(); }
+
+    THEMES.forEach(t => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'th'; b.dataset.bg = t.bg; b.dataset.a = t.accent;
+      b.innerHTML = '<span class="pv" style="background:' + t.bg + '"><i style="background:' + t.accent +
+                    '"></i><i style="background:' + t.accent2 + '"></i></span><span class="nm">' + t.n + '</span>';
+      b.onclick = () => {
+        Object.assign(theme, { bg: t.bg, accent: t.accent, accent2: t.accent2, overlay: t.overlay, light: !!t.light, anim: false, blur: 0 });
+        applyTheme(); saveTheme();
+      };
+      $('themes').appendChild(b);
+    });
+    $('lightMode').onchange = e => {
+      theme.light = e.target.checked;
+      theme.overlay = theme.light ? Math.min(theme.overlay, 15) : Math.max(theme.overlay, 25);
+      applyTheme(); saveTheme();
+    };
 
     PRESETS.forEach(p => {
       const s = document.createElement('button');
@@ -532,6 +645,7 @@
       openP(true);
       loadCk();
       loadKeys();
+      loadSingers();
     };
     $('closePanel').onclick = () => openP(false);
 
@@ -563,6 +677,61 @@
       setTimeout(() => { $('ckSave').disabled = false; $('ckSave').textContent = '💾 שמור חיבור'; }, 2500);
     };
     $('panelBg').onclick = () => openP(false);
+
+    // ===== זמרים מותרים =====
+    let singers = { on: false, video: true, list: [] }, sgTimer = null;
+    function drawSingers() {
+      $('sgOn').checked = !!singers.on; $('sgVideo').checked = singers.video !== false;
+      $('sgList').innerHTML = '';
+      singers.list.forEach((n, i) => {
+        const c = document.createElement('span'); c.className = 'chip';
+        c.innerHTML = '🎤 ' + esc(n) + ' <button type="button" title="הסר">✕</button>';
+        c.querySelector('button').onclick = () => { singers.list.splice(i, 1); drawSingers(); saveSingers(); };
+        $('sgList').appendChild(c);
+      });
+      $('sgStat').textContent = singers.on
+        ? (singers.list.length ? '✅ פעיל – ' + singers.list.length + ' זמרים ברשימה' : '⚠️ הרשימה ריקה – הסינון לא פועל עד שתוסיף זמר')
+        : '⚪ כבוי – אפשר להוריד הכול';
+    }
+    async function loadSingers() {
+      try { singers = Object.assign({ on: false, video: true, list: [] }, await api({ action: 'getSingers' })); drawSingers(); }
+      catch (e) { $('sgStat').textContent = '❌ ' + e.message; }
+    }
+    function saveSingers() {
+      $('sgStat').textContent = '⏳ שומר...';
+      clearTimeout(sgTimer);
+      sgTimer = setTimeout(async () => {
+        try { await api({ action: 'saveSingers', designKey, on: singers.on, video: singers.video, list: singers.list }); drawSingers(); }
+        catch (e) { $('sgStat').textContent = '❌ ' + e.message; }
+      }, 500);
+    }
+    function addSinger() {
+      const n = $('sgName').value.trim();
+      if (!n) return;
+      if (!singers.list.some(x => x.toLowerCase() === n.toLowerCase())) singers.list.push(n);
+      $('sgName').value = ''; drawSingers(); saveSingers();
+    }
+    $('sgAdd').onclick = addSinger;
+    $('sgName').onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); addSinger(); } };
+    $('sgOn').onchange = e => { singers.on = e.target.checked; drawSingers(); saveSingers(); };
+    $('sgVideo').onchange = e => { singers.video = e.target.checked; saveSingers(); };
+
+    // ===== שינוי סיסמאות =====
+    $('passSave').onclick = async () => {
+      const nk = $('newKey').value.trim(), nk2 = $('newKey2').value.trim(), nd = $('newDesign').value.trim();
+      if (!nk && !nd) return alert('הקלד סיסמה חדשה');
+      if (nk !== nk2) return alert('שתי הסיסמאות החדשות לאתר לא זהות');
+      if ((nk && nk.length < 4) || (nd && nd.length < 4)) return alert('סיסמה צריכה להיות לפחות 4 תווים');
+      $('passSave').disabled = true; $('passSave').textContent = 'שומר...';
+      try {
+        await api({ action: 'changePass', designKey, newKey: nk, newDesign: nd });
+        if (nk) localStorage.setItem('musicKey', nk);
+        if (nd) { designKey = nd; sessionStorage.setItem('designKey', nd); }
+        $('newKey').value = $('newKey2').value = $('newDesign').value = '';
+        $('passSave').textContent = '✅ הסיסמה שונתה';
+      } catch (e) { $('passSave').textContent = '❌ ' + e.message; }
+      setTimeout(() => { $('passSave').disabled = false; $('passSave').textContent = '🔒 שנה סיסמה'; }, 3000);
+    };
 
     // ===== מפתחות לבינה מלאכותית =====
     function showKeys(k) {
@@ -809,6 +978,8 @@
         const m = line.match(/^\s*(?:[-*•]|\d+[.)])\s+(.*)/);
         if (m) { if (!list) { list = []; } list.push('<li>' + m[1] + '</li>'); return; }
         if (list) { out.push('<ul>' + list.join('') + '</ul>'); list = null; }
+        const hd = line.match(/^\s*#{1,4}\s+(.*)/);
+        if (hd) { out.push('<h4>' + hd[1] + '</h4>'); return; }
         if (line.trim()) out.push('<p>' + line + '</p>');
       });
       if (list) out.push('<ul>' + list.join('') + '</ul>');
