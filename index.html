@@ -570,6 +570,7 @@
         <span>(דקות:שניות – לשיר או סרטון אחד)</span></div>
       <div class="hlbar">
         <button type="button" id="hlBtn">📜 הלכה</button>
+        <button type="button" id="aiOpenBtn" title="בינה פתוחה (עם הקוד האישי)">🔒</button>
         <select id="hlNusach" title="לפי איזה מנהג">
           <option value="any">כל השיטות</option>
           <option value="sefardi">ספרדי / עדות המזרח</option>
@@ -757,6 +758,14 @@
       לכל משתמש אפשר גם לקבוע בנפרד בכרטיס שלו.</div>
     <input class="pin" id="gCid" style="direction:ltr" spellcheck="false" placeholder="xxxxxxxx.apps.googleusercontent.com">
     <button class="pbtn primary" id="gSave" type="button">💾 שמור</button>
+
+    <h3>🔓 קוד אישי לבינה פתוחה</h3>
+    <div class="help">בבוט הבינה ← 🔒 ← מקלידים את הקוד, והבינה עובדת בלי הגבלות הצניעות של האתר (רק הכללים של Gemini עצמו),
+      עד שסוגרים את הדף. מי שלא יודע את הקוד – הכול נשאר כרגיל.</div>
+    <div class="ckstat" id="aoStat">...</div>
+    <input class="pin" id="aoCode" type="password" autocomplete="new-password" placeholder="קוד חדש (לפחות 6 תווים)" style="direction:ltr">
+    <button class="pbtn primary" id="aoSave" type="button">💾 שמור קוד</button>
+    <button class="pbtn" id="aoDel" type="button">🗑️ בטל</button>
 
     <h3>👑 קוד כניסה קבוע למנהל</h3>
     <div class="help">קוד שלך בלבד – נכנסים איתו כמנהל מכל מכשיר, בלי חשבון גוגל ובלי מייל:
@@ -1280,6 +1289,7 @@
       $('gStat').textContent = UD.googleClientId ? '✅ מחובר – הכפתור מופיע בכניסה' : '⚪ לא מוגדר – רק קוד למייל';
       $('ecOn').checked = UD.emailCode !== false;
       $('acStat').textContent = UD.adminCode ? '✅ יש קוד קבוע' : '⚪ אין קוד קבוע';
+      $('aoStat').textContent = UD.aiOpen ? '✅ יש קוד לבינה פתוחה' : '⚪ אין קוד – הבינה תמיד עם הגבלות';
       $('shCity').innerHTML = '<option value="">כבוי – האתר פתוח תמיד</option>' +
         (UD.cities || []).map(c => '<option' + (c === UD.shabbat ? ' selected' : '') + '>' + esc(c) + '</option>').join('');
       $('shStat').textContent = !UD.shabbat ? '⚪ כבוי' : UD.shabbatNow && UD.shabbatNow.on
@@ -1476,6 +1486,15 @@
     $('vClear').onclick = async () => {
       if (!confirm('לבטל את קוד הווידאו?')) return;
       try { UD = await api({ action: 'saveAccess', videoCode: '' }); drawUsers(); toast('🗑️ בוטל'); } catch (e) { alert(e.message); }
+    };
+    $('aoSave').onclick = async () => {
+      const v = $('aoCode').value.trim();
+      if (v.length < 6) return alert('לפחות 6 תווים');
+      try { UD = await api({ action: 'saveAccess', aiOpenCode: v }); $('aoCode').value = ''; drawUsers(); toast('🔓 הקוד נשמר'); } catch (e) { alert(e.message); }
+    };
+    $('aoDel').onclick = async () => {
+      if (!confirm('לבטל את הקוד לבינה פתוחה?')) return;
+      try { UD = await api({ action: 'saveAccess', aiOpenCode: '' }); drawUsers(); toast('🗑️ בוטל'); } catch (e) { alert(e.message); }
     };
     $('acSave').onclick = async () => {
       const v = $('acCode').value.trim();
@@ -1890,6 +1909,8 @@
           row.querySelector('.pick').onclick = () => {          // ☑️ לחיצה על השיר = סימון להורדה ביחד
             if (sel.has(v.id)) sel.delete(v.id); else {
               if (sel.size >= 25) return toast('אפשר לסמן עד 25 שירים בפעם אחת');
+              const twin = all.find(o => sel.has(o.id) && sameSong(o.title, v.title));
+              if (twin) return toast('🔁 כבר סימנת את השיר הזה: ' + twin.title.slice(0, 50));
               sel.add(v.id);
             }
             row.classList.toggle('sel', sel.has(v.id)); drawSel();
@@ -1918,7 +1939,13 @@
             box.querySelector('.selbar .go').onclick = downloadSel;
             box.querySelector('.selbar .clr').onclick = () => { sel.clear(); box.querySelectorAll('.prow.sel').forEach(r => r.classList.remove('sel')); drawSel(); };
             box.querySelector('.selbar .all').onclick = () => {
-              all.slice(0, 25).forEach(v => sel.add(v.id));
+              let skipped = 0;
+              all.forEach(v => {
+                if (sel.size >= 25 || sel.has(v.id)) return;
+                if (all.some(o => sel.has(o.id) && sameSong(o.title, v.title))) { skipped++; return; }   // בלי כפולים
+                sel.add(v.id);
+              });
+              if (skipped) setTimeout(() => toast('🔁 דילגתי על ' + skipped + ' כפולים'), 300);
               box.querySelectorAll('.prow').forEach(r => { const id = (r.querySelector('img').src.match(/vi\/([\w-]{11})\//) || [])[1]; r.classList.toggle('sel', sel.has(id)); });
               drawSel(); if (all.length > 25) toast('סומנו 25 הראשונים (המקסימום)');
             };
@@ -1938,6 +1965,20 @@
         }
       };
       await more();
+    }
+
+    // 🔁 אותו שיר פעמיים? (קליפ / מילים / עברית+אנגלית) – כל החלקים של השם הקצר נמצאים בשם השני
+    const DUPW = new Set('official video audio clip music lyric lyrics hd 4k hq mv full version ft feat prod קליפ רשמי רשמית מילים אודיו הקליפ הרשמי השיר גרסה מלאה'.split(' '));
+    function songParts(t) {
+      t = String(t || '').toLowerCase().replace(/[(\[{【][^)\]}】]*[)\]}】]/g, ' ').replace(/^\d+\s*-\s*/, '');
+      return t.split(/\s[-–—~:]\s|\||｜/).map(seg => [...new Set((seg.match(/[a-z0-9\u0590-\u05ff']+/g) || [])
+        .filter(w => (w.length > 1 || /\d/.test(w)) && !DUPW.has(w)))].sort().join(' ')).filter(Boolean);
+    }
+    function sameSong(a, b) {
+      const pa = songParts(a), pb = songParts(b);
+      if (!pa.length || !pb.length) return false;
+      const [s, g] = pa.length <= pb.length ? [pa, pb] : [pb, pa];
+      return s.every(p => g.includes(p));
     }
 
     // הורדה בתוך הרשימה (בלי בועה חדשה) – מחזירה true אם הצליחה
@@ -1961,7 +2002,7 @@
       let code = '';
       try { code = m === 'video' ? sessionStorage.getItem('videoCode') || '' : ''; } catch (e) {}
       for (let i = 0; i < 4; i++) {
-        try { return await api({ query, mode: m, videoCode: code || undefined, quality: qualityFor(m), max: extra.max, cut: extra.cut }); }
+        try { return await api({ query, mode: m, videoCode: code || undefined, quality: qualityFor(m), max: extra.max, cut: extra.cut, studio: extra.studio }); }
         catch (e) {
           if (!(e.data && e.data.needVideoCode)) throw e;
           try { sessionStorage.removeItem('videoCode'); } catch (e2) {}
@@ -1984,7 +2025,8 @@
         if (lines.length > 25) return toast('אפשר עד 25 שירים בפעם אחת');
         return runRequest(lines.join('\n'), 'list', lines.length + ' שירים: ' + lines.slice(0, 3).join(' · ') + (lines.length > 3 ? '…' : ''));
       }
-      const one = text.replace(/\s*\n\s*/g, ' ');
+      let one = text.replace(/\s*\n\s*/g, ' ');
+      if (/^(www\.|m\.|music\.)?(youtube\.com|youtu\.be|t\.me)\//i.test(one)) one = 'https://' + one;   // קישור בלי https://
       const cut = cutRange();
       if (cut && (mode === 'song' || mode === 'video')) {        // ✂️ רק קטע מהשיר
         if (cut === 'bad') return toast('✂️ זמן החיתוך לא תקין (למשל 0:30 עד 1:15)');
@@ -1996,7 +2038,8 @@
         const n = prompt('📺 כמה סרטונים אחרונים להוריד מהערוץ? (5–100)\nכל השירים מגיעים ב-ZIP אחד של MP3.', '30');
         if (n === null) return;
         const max = Math.max(5, Math.min(100, parseInt(n, 10) || 30));
-        return runRequest(one, 'album', '📺 ' + (byName ? one : 'ערוץ: ' + one.replace(/^https?:\/\/(www\.)?/, '')) + ' (' + max + ')', { max });
+        const studio = confirm('🎙️ רק סינגלים רשמיים?\n\nאישור = רק השירים עצמם מהאולפון – בלי הופעות, ביצועים מיוחדים (מצעד, אקוסטי, סשן), מחרוזות, מיקסים, קאברים, ראיונות וטיזרים\nביטול = הכול');
+        return runRequest(one, 'album', '📺 ' + (byName ? one : 'ערוץ: ' + one.replace(/^https?:\/\/(www\.)?/, '')) + ' (' + max + (studio ? ', רק מאולפון' : '') + ')', { max, studio });
       }
       if (pickOn && (mode === 'song' || mode === 'video') && !/^https?:\/\//.test(one)) return showPicks(one, mode);
       runRequest(one, mode);
@@ -2028,6 +2071,22 @@
     }
     $('hlBtn').onclick = () => { hlOn = !hlOn; LS.set('hlOn', hlOn ? '1' : '0'); drawHl(); q.focus(); };
     $('hlNusach').onchange = () => LS.set('hlNusach', $('hlNusach').value);
+    // 🔓 בינה פתוחה – אחרי הקוד האישי, עד סגירת הדף
+    const aiOpenCode = () => { try { return sessionStorage.getItem('aiOpen') || ''; } catch (e) { return ''; } };
+    const drawOpen = () => { const o = !!aiOpenCode(); $('aiOpenBtn').textContent = o ? '🔓 פתוח' : '🔒';
+                             $('aiOpenBtn').classList.toggle('on', o); };
+    $('aiOpenBtn').onclick = async () => {
+      if (aiOpenCode()) { try { sessionStorage.removeItem('aiOpen'); } catch (e) {} drawOpen(); return toast('🔒 חזרה למצב רגיל'); }
+      const code = await askPass('🔓 קוד אישי לבינה פתוחה');
+      if (!code) return;
+      try {
+        const r = await api({ action: 'aiOpen', code });
+        if (!r.ok) return toast('❌ הקוד שגוי');
+        try { sessionStorage.setItem('aiOpen', code); } catch (e) {}
+        drawOpen(); toast('🔓 הבינה פתוחה – עד שתסגור את הדף');
+      } catch (e) { toast('❌ ' + e.message); }
+    };
+    drawOpen();
     drawHl();
 
     // בודק כל שנייה וחצי אם הקובץ מוכן. גוגל בודק בעצמו אם השרת נפל ומחזיר את הסיבה;
@@ -2231,7 +2290,8 @@
       try {
         const r = await api({ action: 'ai', message: text, image: img || undefined,
                               admin: img && aiAdmin ? aiAdmin : undefined,
-                              halacha: hlOn && !img ? true : undefined, nusach: $('hlNusach').value });
+                              halacha: hlOn && !img ? true : undefined, nusach: $('hlNusach').value,
+                              open: aiOpenCode() || undefined });
         wait.remove();
         const d = aiBubble('m', r.reply || '', { image: r.image, mime: r.mime, src: r.sources });
         if (r.needAdmin && img) {
@@ -2641,7 +2701,11 @@
     const openTgP = o => { $('tgp').classList.toggle('open', o); $('tgBg').classList.toggle('open', o); };
     $('openTg').onclick = async () => {
       openTgP(true);
-      try { const r = await api({ action: 'tgList' }); TG.list = r.list; $('tgMail').checked = !!r.mail; drawTg(); }
+      try {
+        const r = await api({ action: 'tgList' }); TG.list = r.list; $('tgMail').checked = !!r.mail;
+        $('tgAdd').placeholder = r.canEdit ? '➕ שם ערוץ / קישור t.me / ‎@name (ואז Enter)' : '➕ הוספת ערוץ – רק עם קוד מנהל';
+        drawTg();
+      }
       catch (e) { $('tgFeed').innerHTML = '<span class="err">❌ ' + esc(e.message) + '</span>'; }
     };
     $('closeTg').onclick = $('tgBg').onclick = () => openTgP(false);
@@ -2659,16 +2723,32 @@
       if (!TG.list.length) $('tgFeed').innerHTML = '<div class="muted">עוד לא הוספת ערוצים. כתוב למעלה, למשל "עמית סגל" או קישור t.me/…</div>';
       else if (!TG.cur) tgOpen(TG.list[0].u);
     }
+    // הוספה / הסרה של ערוצים – רק המנהל, או מי שמקליד את קוד המנהל
+    async function tgEdit(body) {
+      let code = ''; try { code = sessionStorage.getItem('tgAdm') || ''; } catch (e) {}
+      for (let i = 0; i < 3; i++) {
+        try { return await api(Object.assign({}, body, { adminCode: code || undefined })); }
+        catch (e) {
+          if (!(e.data && e.data.needAdmin)) throw e;
+          try { sessionStorage.removeItem('tgAdm'); } catch (e2) {}
+          code = await askPass('👑 קוד מנהל (רק המנהל מוסיף ומסיר ערוצים)', code ? '❌ הקוד שגוי' : '');
+          if (!code) throw new Error('צריך קוד מנהל כדי לשנות את רשימת הערוצים');
+          try { sessionStorage.setItem('tgAdm', code); } catch (e2) {}
+        }
+      }
+      throw new Error('קוד המנהל שגוי');
+    }
     async function tgDel(c) {
-      if (!confirm('להסיר את "' + (c.title || c.u) + '"?')) return;
-      const r = await api({ action: 'tgRemove', u: c.u }); TG.list = r.list; if (TG.cur === c.u) TG.cur = null; drawTg();
+      if (!confirm('להסיר את "' + (c.title || c.u) + '" (אצל כולם)?')) return;
+      try { const r = await tgEdit({ action: 'tgRemove', u: c.u }); TG.list = r.list; if (TG.cur === c.u) TG.cur = null; drawTg(); }
+      catch (e) { alert(e.message); }
     }
     $('tgAdd').onkeydown = async e => {
       if (e.key !== 'Enter') return;
       e.preventDefault();
       const name = $('tgAdd').value.trim(); if (!name) return;
       $('tgAdd').disabled = true; toast('✈️ מחפש את הערוץ...');
-      try { const r = await api({ action: 'tgAdd', name }); TG.list = r.list; $('tgAdd').value = ''; TG.cur = null; drawTg(); tgOpen(r.added); toast('✅ נוסף'); }
+      try { const r = await tgEdit({ action: 'tgAdd', name }); TG.list = r.list; $('tgAdd').value = ''; TG.cur = null; drawTg(); tgOpen(r.added); toast('✅ נוסף'); }
       catch (er) { alert(er.message); }
       $('tgAdd').disabled = false;
     };
@@ -2690,20 +2770,31 @@
           TG.oldest = TG.oldest ? Math.min(TG.oldest, p.id) : p.id;
           const d = document.createElement('div'); d.className = 'tgpost';
           d.innerHTML = '<div class="tm">' + (p.date ? new Date(p.date).toLocaleString('he-IL', { weekday: 'short', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' }) : '') +
-            (p.fwd ? ' · הועבר מ: ' + esc(p.fwd) : '') + (p.video ? ' · 🎬 סרטון (לא מוצג)' : '') + '</div>' +
+            (p.fwd ? ' · הועבר מ: ' + esc(p.fwd) : '') + (p.video && !p.vurl ? ' · 🎬 סרטון גדול – לא ניתן להציג כאן' : '') + '</div>' +
             esc(p.text || (p.photos.length ? '' : '(הודעה בלי טקסט)'));
           if (p.photos.length) {
             const b = document.createElement('button'); b.type = 'button'; b.textContent = '🖼️ הצג תמונה' + (p.photos.length > 1 ? 'ות (' + p.photos.length + ')' : '');
             b.onclick = async () => {
               b.disabled = true; b.textContent = '⏳';
+              let blocked = 0;
               for (const url of p.photos) {
-                try { const im = await api({ action: 'tgImg', url }); const img = document.createElement('img');
-                      img.src = 'data:' + im.mime + ';base64,' + im.data; d.appendChild(img); } catch (e) {}
+                try {
+                  const im = await api({ action: 'tgImg', url });
+                  if (im.blocked) { blocked++; continue; }
+                  const img = document.createElement('img');
+                  img.src = URL.createObjectURL(new Blob([unX(im.x)], { type: im.mime })); d.appendChild(img);
+                } catch (e) {}
               }
               b.remove();
+              if (blocked) { const n = document.createElement('div'); n.className = 'tm'; n.textContent = '🚫 ' + (blocked > 1 ? blocked + ' תמונות' : 'תמונה') + ' עם נשים – לא מוצג'; d.appendChild(n); }
             };
             d.appendChild(b);
             if ($('tgImgs').checked) b.click();
+          }
+          if (p.vurl) {
+            const vb = document.createElement('button'); vb.type = 'button'; vb.textContent = '🎬 הצג סרטון';
+            vb.onclick = () => tgVideo(p, d, vb);
+            d.appendChild(vb);
           }
           $('tgFeed').appendChild(d);
         });
@@ -2713,6 +2804,45 @@
           $('tgFeed').appendChild(mb);
         }
       } catch (e) { if (!more) $('tgFeed').innerHTML = '<span class="err">❌ ' + esc(e.message) + '</span>'; }
+    }
+
+    // הקבצים מגיעים מקודדים (כדי שהסינון לא יחסום אותם בדרך) – כאן מפענחים
+    function unX(b64) { const u = b64bytes(b64); for (let i = 0; i < u.length; i++) u[i] ^= 0x5A; return u; }
+    // 🎬 סרטון מטלגרם: מורידים בחלקים, בודקים 5 תמונות ממנו שאין בהן נשים – ורק אז מציגים
+    async function tgVideo(p, d, vb) {
+      vb.disabled = true;
+      try {
+        const parts = []; let start = 0, size = 0;
+        while (start !== null) {
+          const c = await api({ action: 'tgVid', url: p.vurl, start });
+          parts.push(unX(c.x)); size = c.size; start = c.next;
+          vb.textContent = '⏳ ' + (size ? Math.round(parts.reduce((a, x) => a + x.length, 0) / size * 100) : 0) + '%';
+        }
+        vb.textContent = '🔎 בודק את הסרטון...';
+        const url = URL.createObjectURL(new Blob(parts, { type: 'video/mp4' }));
+        const frames = await videoFrames(url, 5);
+        const v = await api({ action: 'tgFrames', frames });
+        if (!v.ok) { URL.revokeObjectURL(url); vb.textContent = '🚫 בסרטון יש נשים (או שלא הצלחתי לבדוק) – לא מוצג'; return; }
+        const el = document.createElement('video'); el.controls = true; el.playsInline = true; el.src = url;
+        el.style.cssText = 'width:100%;border-radius:10px;margin-top:6px'; d.appendChild(el); vb.remove();
+      } catch (e) { vb.textContent = '❌ ' + e.message; vb.disabled = false; }
+    }
+    function videoFrames(url, n) {
+      return new Promise((ok, bad) => {
+        const v = document.createElement('video'); v.muted = true; v.playsInline = true; v.preload = 'auto'; v.src = url;
+        const out = [], cv = document.createElement('canvas');
+        v.onerror = () => bad(new Error('הסרטון לא נפתח'));
+        v.onloadedmetadata = async () => {
+          const W = 360, H = Math.round(360 * (v.videoHeight || 9) / (v.videoWidth || 16));
+          cv.width = W; cv.height = H;
+          for (let i = 0; i < n; i++) {
+            await new Promise(r => { v.onseeked = r; v.currentTime = Math.min(v.duration - 0.1, v.duration * (i + 0.5) / n); });
+            cv.getContext('2d').drawImage(v, 0, 0, W, H);
+            out.push(cv.toDataURL('image/jpeg', 0.7).split(',')[1]);
+          }
+          ok(out);
+        };
+      });
     }
 
     /* ================= 📊 סטטיסטיקה ================= */
