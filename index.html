@@ -759,6 +759,13 @@
     <input class="pin" id="gCid" style="direction:ltr" spellcheck="false" placeholder="xxxxxxxx.apps.googleusercontent.com">
     <button class="pbtn primary" id="gSave" type="button">💾 שמור</button>
 
+    <h3>🔑 קוד להוספת ערוצי טלגרם</h3>
+    <div class="help">כשיש קוד – רק מי שמקליד אותו יכול להוסיף או להסיר ערוצים (גם אתה). כולם רואים וקוראים את אותה רשימה.
+      ⚠️ אחרי שקובעים קוד – אי אפשר לבטל אותו לעולם. אפשר רק להחליף לקוד אחר, ורק עם הקוד הנוכחי.</div>
+    <div class="ckstat" id="tcStat">...</div>
+    <input class="pin" id="tcCode" type="password" autocomplete="new-password" placeholder="קוד חדש (לפחות 4 תווים)" style="direction:ltr">
+    <button class="pbtn primary" id="tcSave" type="button">💾 שמור קוד</button>
+
     <h3>🔓 קוד אישי לבינה פתוחה</h3>
     <div class="help">בבוט הבינה ← 🔒 ← מקלידים את הקוד, והבינה עובדת בלי הגבלות הצניעות של האתר (רק הכללים של Gemini עצמו),
       עד שסוגרים את הדף. מי שלא יודע את הקוד – הכול נשאר כרגיל.</div>
@@ -1289,6 +1296,8 @@
       $('gStat').textContent = UD.googleClientId ? '✅ מחובר – הכפתור מופיע בכניסה' : '⚪ לא מוגדר – רק קוד למייל';
       $('ecOn').checked = UD.emailCode !== false;
       $('acStat').textContent = UD.adminCode ? '✅ יש קוד קבוע' : '⚪ אין קוד קבוע';
+      $('tcStat').textContent = UD.tgCode ? '✅ יש קוד קבוע – רק עם הקוד מוסיפים ערוצים' : '⚪ אין קוד – רק המנהל מוסיף';
+      $('tcSave').textContent = UD.tgCode ? '🔁 החלף קוד' : '💾 שמור קוד';
       $('aoStat').textContent = UD.aiOpen ? '✅ יש קוד לבינה פתוחה' : '⚪ אין קוד – הבינה תמיד עם הגבלות';
       $('shCity').innerHTML = '<option value="">כבוי – האתר פתוח תמיד</option>' +
         (UD.cities || []).map(c => '<option' + (c === UD.shabbat ? ' selected' : '') + '>' + esc(c) + '</option>').join('');
@@ -1486,6 +1495,14 @@
     $('vClear').onclick = async () => {
       if (!confirm('לבטל את קוד הווידאו?')) return;
       try { UD = await api({ action: 'saveAccess', videoCode: '' }); drawUsers(); toast('🗑️ בוטל'); } catch (e) { alert(e.message); }
+    };
+    $('tcSave').onclick = async () => {
+      const v = $('tcCode').value.trim();
+      if (v.length < 4) return alert('לפחות 4 תווים');
+      let old = '';
+      if (UD.tgCode) { old = await askPass('🔑 הקלד את קוד הטלגרם הנוכחי'); if (!old) return; }
+      else if (!confirm('⚠️ אחרי שתקבע את הקוד – לא תוכל לבטל אותו לעולם (רק להחליף). להמשיך?')) return;
+      try { UD = await api({ action: 'saveAccess', tgCode: v, tgOld: old }); $('tcCode').value = ''; drawUsers(); toast('🔑 הקוד נשמר'); } catch (e) { alert(e.message); }
     };
     $('aoSave').onclick = async () => {
       const v = $('aoCode').value.trim();
@@ -2703,7 +2720,7 @@
       openTgP(true);
       try {
         const r = await api({ action: 'tgList' }); TG.list = r.list; $('tgMail').checked = !!r.mail;
-        $('tgAdd').placeholder = r.canEdit ? '➕ שם ערוץ / קישור t.me / ‎@name (ואז Enter)' : '➕ הוספת ערוץ – רק עם קוד מנהל';
+        $('tgAdd').placeholder = r.canEdit ? '➕ שם ערוץ / קישור t.me / ‎@name (ואז Enter)' : '🔑 הוספת ערוץ (עם קוד) – שם / קישור t.me';
         drawTg();
       }
       catch (e) { $('tgFeed').innerHTML = '<span class="err">❌ ' + esc(e.message) + '</span>'; }
@@ -2731,12 +2748,12 @@
         catch (e) {
           if (!(e.data && e.data.needAdmin)) throw e;
           try { sessionStorage.removeItem('tgAdm'); } catch (e2) {}
-          code = await askPass('👑 קוד מנהל (רק המנהל מוסיף ומסיר ערוצים)', code ? '❌ הקוד שגוי' : '');
-          if (!code) throw new Error('צריך קוד מנהל כדי לשנות את רשימת הערוצים');
+          code = await askPass('🔑 קוד להוספת ערוצים', code ? '❌ הקוד שגוי' : '');
+          if (!code) throw new Error('צריך קוד כדי לשנות את רשימת הערוצים');
           try { sessionStorage.setItem('tgAdm', code); } catch (e2) {}
         }
       }
-      throw new Error('קוד המנהל שגוי');
+      throw new Error('הקוד שגוי');
     }
     async function tgDel(c) {
       if (!confirm('להסיר את "' + (c.title || c.u) + '" (אצל כולם)?')) return;
