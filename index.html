@@ -2732,7 +2732,8 @@
       $('tgChips').innerHTML = '';
       TG.list.forEach(c => {
         const b = document.createElement('button'); b.type = 'button';
-        b.textContent = c.title || c.u; b.classList.toggle('on', TG.cur === c.u);
+        b.textContent = (c.shared === false ? '🔒 ' : '') + (c.title || c.u); b.dataset.u = c.u; b.classList.toggle('on', TG.cur === c.u);
+        if (c.shared === false) b.title = 'רק אצלך – לא משותף עם המשתמשים';
         b.onclick = () => tgOpen(c.u);
         b.oncontextmenu = e => { e.preventDefault(); tgDel(c); };
         $('tgChips').appendChild(b);
@@ -2775,13 +2776,26 @@
     };
     async function tgOpen(u, more) {
       TG.cur = u;
-      document.querySelectorAll('#tgChips button').forEach(b => b.classList.toggle('on', b.textContent === ((TG.list.find(c => c.u === u) || {}).title || u)));
+      document.querySelectorAll('#tgChips button').forEach(b => b.classList.toggle('on', b.dataset.u === u));
       if (!more) { $('tgFeed').innerHTML = '<div class="muted">⏳ טוען...</div>'; TG.oldest = null; }
       try {
         const r = await api({ action: 'tgFeed', u, before: more ? TG.oldest : undefined });
         if (TG.cur !== u) return;
-        if (!more) $('tgFeed').innerHTML = (r.info.desc ? '<div class="help">' + esc(r.info.desc) + '</div>' : '') +
-          '<div class="muted" style="font-size:12px">לחיצה ארוכה על שם ערוץ = הסרה</div>';
+        if (!more) {
+          $('tgFeed').innerHTML = (r.info.desc ? '<div class="help">' + esc(r.info.desc) + '</div>' : '') +
+            '<div class="muted" style="font-size:12px">לחיצה ארוכה על שם ערוץ = הסרה</div>';
+          const ch = TG.list.find(c => c.u === u);
+          if (ME && ME.role === 'admin' && ch) {          // 👥 לשתף את הערוץ עם המשתמשים, או להשאיר רק אצלי
+            const sb = document.createElement('div'); sb.className = 'switch';
+            sb.innerHTML = '<span>👥 לשתף את הערוץ הזה עם המשתמשים</span><input type="checkbox"' + (ch.shared !== false ? ' checked' : '') + '>';
+            sb.querySelector('input').onchange = async e => {
+              try { const rr = await tgEdit({ action: 'tgShare', u, on: e.target.checked }); TG.list = rr.list; drawTg();
+                    toast(e.target.checked ? '👥 משותף עם המשתמשים' : '🔒 רק אצלך'); }
+              catch (er) { alert(er.message); e.target.checked = !e.target.checked; }
+            };
+            $('tgFeed').appendChild(sb);
+          }
+        }
         const old = $('tgFeed').querySelector('.tgmore'); if (old) old.remove();
         r.posts.forEach(p => {
           TG.oldest = TG.oldest ? Math.min(TG.oldest, p.id) : p.id;
