@@ -182,6 +182,29 @@
     #shabbat .cnd { font-size: 64px; animation: flick 2.5s infinite; }
     @keyframes flick { 50% { opacity: .75; transform: scale(.97); } }
     #shabbat h2 { font-size: 30px; margin: 10px 0; }
+    .ttabs button { font-size: 12px; padding: 7px 2px; }
+    @media (max-width: 520px) { .hbtns { gap: 4px; } .hbtns .icon-btn { width: 34px; height: 34px; font-size: 15px; border-radius: 10px; }
+                                header h1 { font-size: 18px; white-space: nowrap; } }
+    #todayBar { margin: 0 14px 6px; padding: 6px 12px; border-radius: 12px; font-size: 13px; cursor: pointer; color: var(--muted);
+                background: var(--glass-strong); border: 1px solid var(--stroke); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #todayBar[hidden] { display: none; }
+    #redBanner { margin: 0 14px 6px; padding: 10px 14px; border-radius: 12px; background: #b91c1c; color: #fff; font-weight: 700;
+                 animation: pulse 1s 6; white-space: pre-wrap; cursor: pointer; }
+    #redBanner[hidden] { display: none; }
+    .zt { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; font-size: 14px; margin: 8px 0; }
+    .zt b { font-variant-numeric: tabular-nums; }
+    .evl div { font-size: 13px; padding: 3px 0; border-bottom: 1px solid var(--stroke); }
+    .wxd { display: flex; gap: 6px; margin: 8px 0; }
+    .wxd div { flex: 1; text-align: center; padding: 6px 2px; border-radius: 10px; background: rgba(127,127,127,.1); font-size: 12px; }
+    .reader { font-size: 17px; line-height: 1.9; white-space: pre-wrap; margin-top: 8px; }
+    .reader p { margin: 0 0 10px; }
+    #lyr { position: fixed; inset: 0; z-index: 55; background: rgba(0,0,0,.55); display: grid; place-items: center; padding: 16px; }
+    #lyr[hidden] { display: none; }
+    .lyrbox { background: var(--glass-strong); border: 1px solid var(--stroke); border-radius: 16px; padding: 16px; width: min(460px, 100%);
+              max-height: 80vh; overflow: auto; backdrop-filter: blur(20px); position: relative; }
+    .lyrbox .icon-btn { position: absolute; top: 10px; left: 10px; }
+    #lyrText { white-space: pre-wrap; line-height: 1.8; font-size: 15px; }
+
     .tgchips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
     .tgchips button { font: inherit; font-size: 13px; padding: 5px 10px; border-radius: 99px; cursor: pointer; color: var(--text);
                       background: rgba(127,127,127,.12); border: 1px solid var(--stroke); }
@@ -505,6 +528,7 @@
         <small id="whoami">שירים והרצאות ישר אליך</small>
       </div>
       <div class="hbtns">
+        <button class="icon-btn" id="openTools" type="button" title="היום, לימוד, רדיו, ויקיפדיה ופתקים">🧰</button>
         <button class="icon-btn" id="openTg" type="button" title="ערוצי טלגרם" style="display:none">✈️</button>
         <button class="icon-btn" id="openLib" type="button" title="הספרייה שלי">📚</button>
         <button class="icon-btn" id="openPanel" type="button" title="פאנל ניהול" style="display:none">⚙️</button>
@@ -512,6 +536,8 @@
       </div>
     </header>
 
+    <div id="todayBar" hidden></div>
+    <div id="redBanner" hidden></div>
     <div id="chat">
       <div id="history"></div>
       <div class="msg bot welcome" id="welcome">
@@ -553,6 +579,7 @@
       <div class="pt"><b id="plTitle">—</b><div class="pbar" id="plBar"><i></i></div></div>
       <button type="button" id="plShuf" title="ערבוב">🔀</button>
       <button type="button" id="plVid" title="הצג / הסתר וידאו" hidden>📺</button>
+      <button type="button" id="plLyr" title="מילים לשיר">🎼</button>
       <button type="button" id="plClose" title="סגור">✕</button>
       <audio id="plAudio" preload="auto"></audio>
     </div>
@@ -570,6 +597,7 @@
         <span>(דקות:שניות – לשיר או סרטון אחד)</span></div>
       <div class="hlbar">
         <button type="button" id="hlBtn">📜 הלכה</button>
+        <button type="button" id="trBtn" title="תרגום">🌍 תרגם</button>
         <button type="button" id="aiOpenBtn" title="בינה פתוחה (עם הקוד האישי)">🔒</button>
         <select id="hlNusach" title="לפי איזה מנהג">
           <option value="any">כל השיטות</option>
@@ -588,7 +616,7 @@
       </div>
       <form id="f">
         <button type="button" id="attach" title="צרף תמונה">📎</button>
-        <input type="file" id="aiFile" accept="image/*" hidden>
+        <input type="file" id="aiFile" accept="image/*,.pdf,.docx,.txt,application/pdf" hidden>
         <textarea id="q" rows="1" placeholder="שם השיר או הזמר..." autocomplete="off" enterkeyhint="send"></textarea>
         <button type="button" id="micBtn" title="חיפוש בקול" hidden>🎤</button>
         <button id="send" title="שלח">➤</button>
@@ -676,6 +704,49 @@
     <div id="tgFeed"></div>
   </aside>
 
+  <!-- ===== 🧰 כלים: היום, לימוד, רדיו, ויקיפדיה, פתקים ===== -->
+  <div class="panel-bg" id="toolsBg"></div>
+  <aside class="panel" id="tools">
+    <h2>🧰 כלים <button class="icon-btn" id="closeTools" type="button">✕</button></h2>
+    <div class="tabs ttabs">
+      <button type="button" data-t="today" class="on">📅 היום</button><button type="button" data-t="learn">📖 לימוד</button>
+      <button type="button" data-t="radio">📻 רדיו</button><button type="button" data-t="wiki">🔍 ויקי</button><button type="button" data-t="notes">📝 פתקים</button>
+    </div>
+    <div class="tpane" id="t_today">
+      <select class="pin" id="tCity"></select>
+      <div id="todayBox"><div class="muted">⏳ טוען...</div></div>
+      <div class="switch"><span>☀️ מייל בוקר כל יום ב-6:45 (זמנים, מזג אוויר, לוח שנה, לימוד יומי)</span><input type="checkbox" id="mOn"></div>
+      <div class="switch" id="mNewsRow"><span>📰 כולל סיכום 10 הידיעות החשובות מערוצי הטלגרם (AI)</span><input type="checkbox" id="mNews"></div>
+      <div class="switch"><span>🚨 התרעות צבע אדום כשהאתר פתוח</span><input type="checkbox" id="redOn"></div>
+      <div class="switch"><span>🚨 רק התרעות שמזכירות את העיר שלי</span><input type="checkbox" id="redCity"></div>
+    </div>
+    <div class="tpane" id="t_learn" hidden><div id="learnBox"><div class="muted">⏳ טוען...</div></div></div>
+    <div class="tpane" id="t_radio" hidden>
+      <div id="radioList"><div class="muted">⏳ טוען...</div></div>
+      <div id="radioAdmin" hidden>
+        <input class="pin" id="radioQ" placeholder="🔎 חיפוש תחנה להוספה (למשל: קול חי) ואז Enter">
+        <div id="radioRes"></div>
+      </div>
+    </div>
+    <div class="tpane" id="t_wiki" hidden>
+      <input class="pin" id="wikiQ" placeholder="🔍 חיפוש בוויקיפדיה (ואז Enter)">
+      <div id="wikiBox"></div>
+    </div>
+    <div class="tpane" id="t_notes" hidden>
+      <textarea class="pin" id="noteNew" rows="3" placeholder="📝 פתק חדש..."></textarea>
+      <button class="pbtn primary" id="noteAdd" type="button">➕ שמור פתק</button>
+      <div id="noteList"></div>
+      <h3>⏰ תזכורות במייל</h3>
+      <div class="help">אפשר גם לכתוב לבינה: "תזכיר לי מחר ב-8 להתקשר לאבא".</div>
+      <input class="pin" id="remText" placeholder="על מה להזכיר?">
+      <input class="pin" id="remWhen" type="datetime-local">
+      <button class="pbtn primary" id="remAdd" type="button">⏰ הוסף תזכורת</button>
+      <div id="remList"></div>
+    </div>
+  </aside>
+
+  <div id="lyr" hidden><div class="lyrbox"><button type="button" class="icon-btn" id="lyrClose">✕</button><h3 id="lyrT"></h3><div id="lyrText"></div></div></div>
+
   <div id="shabbat" hidden><div><div class="cnd">🕯️🕯️</div><h2 id="shTitle">שבת שלום</h2>
     <div id="shText"></div><br><button type="button" class="pbtn" id="shAdmin" hidden>⚙️ פאנל ניהול</button></div></div>
 
@@ -758,6 +829,15 @@
       לכל משתמש אפשר גם לקבוע בנפרד בכרטיס שלו.</div>
     <input class="pin" id="gCid" style="direction:ltr" spellcheck="false" placeholder="xxxxxxxx.apps.googleusercontent.com">
     <button class="pbtn primary" id="gSave" type="button">💾 שמור</button>
+
+    <h3>💾 גיבוי אוטומטי</h3>
+    <div class="switch"><span>גיבוי שבועי לדרייב (כל יום ראשון, נשמרים 8 אחרונים)</span><input type="checkbox" id="abOn"></div>
+    <div class="help">הקבצים נשמרים בדרייב שלך בתיקייה "Music Bot - גיבויים". משחזרים מהם ב"💾 גיבוי ושחזור".</div>
+
+    <h3>🚨 ערוץ ההתרעות (צבע אדום)</h3>
+    <div class="help">ערוץ הטלגרם הציבורי שממנו האתר קורא את ההתרעות. אם ההתרעות לא מגיעות – הדבק כאן ערוץ התרעות אחר.</div>
+    <input class="pin" id="alCh" style="direction:ltr" placeholder="tzevaadomm">
+    <button class="pbtn" id="alSave" type="button">💾 שמור ערוץ</button>
 
     <h3>🔑 קוד להוספת ערוצי טלגרם</h3>
     <div class="help">כשיש קוד – רק מי שמקליד אותו יכול להוסיף או להסיר ערוצים (גם אתה). כולם רואים וקוראים את אותה רשימה.
@@ -1296,6 +1376,7 @@
       $('gStat').textContent = UD.googleClientId ? '✅ מחובר – הכפתור מופיע בכניסה' : '⚪ לא מוגדר – רק קוד למייל';
       $('ecOn').checked = UD.emailCode !== false;
       $('acStat').textContent = UD.adminCode ? '✅ יש קוד קבוע' : '⚪ אין קוד קבוע';
+      $('abOn').checked = !!UD.autoBackup; $('alCh').value = UD.alertCh || '';
       $('tcStat').textContent = UD.tgCode ? '✅ יש קוד קבוע – רק עם הקוד מוסיפים ערוצים' : '⚪ אין קוד – רק המנהל מוסיף';
       $('tcSave').textContent = UD.tgCode ? '🔁 החלף קוד' : '💾 שמור קוד';
       $('aoStat').textContent = UD.aiOpen ? '✅ יש קוד לבינה פתוחה' : '⚪ אין קוד – הבינה תמיד עם הגבלות';
@@ -1495,6 +1576,13 @@
     $('vClear').onclick = async () => {
       if (!confirm('לבטל את קוד הווידאו?')) return;
       try { UD = await api({ action: 'saveAccess', videoCode: '' }); drawUsers(); toast('🗑️ בוטל'); } catch (e) { alert(e.message); }
+    };
+    $('abOn').onchange = async e => {
+      try { UD = await api({ action: 'setAutoBackup', on: e.target.checked }); drawUsers(); toast(e.target.checked ? '💾 נשמר גיבוי ראשון – ומעכשיו כל שבוע' : 'הגיבוי השבועי כובה'); }
+      catch (er) { alert(er.message); e.target.checked = !e.target.checked; }
+    };
+    $('alSave').onclick = async () => {
+      try { UD = await api({ action: 'saveAccess', alertCh: $('alCh').value.trim() }); drawUsers(); toast('🚨 נשמר'); } catch (e) { alert(e.message); }
     };
     $('tcSave').onclick = async () => {
       const v = $('tcCode').value.trim();
@@ -1718,7 +1806,7 @@
                           album: 'שם אלבום, קישור לפלייליסט, או "ערוץ ישי ריבו"...', ai: 'שאל אותי כל דבר...' }[mode];
         drawQ();
         document.body.classList.toggle('ai', mode === 'ai');
-        document.body.classList.toggle('nopick', mode !== 'song' && mode !== 'video');
+        document.body.classList.toggle('nopick', mode !== 'song' && mode !== 'video' && mode !== 'lecture');
         if (mode === 'ai') drawHl();
         if (mode === 'ai' && !aiLoaded) loadAiHistory();
         fitQ();
@@ -2058,7 +2146,7 @@
         const studio = confirm('🎙️ רק סינגלים רשמיים?\n\nאישור = רק השירים עצמם מהאולפון – בלי הופעות, ביצועים מיוחדים (מצעד, אקוסטי, סשן), מחרוזות, מיקסים, קאברים, ראיונות וטיזרים\nביטול = הכול');
         return runRequest(one, 'album', '📺 ' + (byName ? one : 'ערוץ: ' + one.replace(/^https?:\/\/(www\.)?/, '')) + ' (' + max + (studio ? ', רק מאולפון' : '') + ')', { max, studio });
       }
-      if (pickOn && (mode === 'song' || mode === 'video') && !/^https?:\/\//.test(one)) return showPicks(one, mode);
+      if (pickOn && (mode === 'song' || mode === 'video' || mode === 'lecture') && !/^https?:\/\//.test(one)) return showPicks(one, mode);
       runRequest(one, mode);
     });
 
@@ -2219,7 +2307,7 @@
 
 
     /* ================= 🤖 בינה מלאכותית ================= */
-    let aiLoaded = false, aiImage = null;
+    let aiLoaded = false, aiImage = null, aiDoc = null, trOn = false;
     const aiBox = $('aiHistory');
 
     function md(t) {   // markdown פשוט ובטוח
@@ -2295,17 +2383,19 @@
     let aiAdmin = null;
 
     async function sendAi(text, again) {
-      if (!text && !aiImage && !again) return;
-      const img = again ? again.img : aiImage;
+      if (!text && !aiImage && !aiDoc && !again) return;
+      const img = again ? again.img : aiImage, doc = again ? null : aiDoc;
+      const sendText = trOn && text && !img && !doc ? 'תרגם את הטקסט הבא לעברית (ואם הוא כבר בעברית – לאנגלית). החזר רק את התרגום, ואחריו הערה קצרה אם יש ניואנס חשוב:\n\n' + text
+                     : trOn && img && !text ? 'תרגם לעברית את כל הטקסט שמופיע בתמונה' : text;
       if (!again) {
         q.value = ''; clearAttach();
-        const ub = aiBubble('u', (hlOn && !img ? '📜 ' : '') + text, { thumb: img ? 'data:image/jpeg;base64,' + img : null });
+        const ub = aiBubble('u', (doc ? '📄 ' + doc.name + (text ? ' – ' : '') : '') + (trOn ? '🌍 ' : '') + (hlOn && !img ? '📜 ' : '') + text, { thumb: img ? 'data:image/jpeg;base64,' + img : null });
         if (hlOn && !img) ub.classList.add('hl');
       }
       const wait = aiBubble('m', '');
       wait.innerHTML = '<div class="typing"><i></i><i></i><i></i></div>';
       try {
-        const r = await api({ action: 'ai', message: text, image: img || undefined,
+        const r = await api({ action: 'ai', message: sendText, image: img || undefined, doc: doc || undefined,
                               admin: img && aiAdmin ? aiAdmin : undefined,
                               halacha: hlOn && !img ? true : undefined, nusach: $('hlNusach').value,
                               open: aiOpenCode() || undefined });
@@ -2332,8 +2422,21 @@
 
     // צירוף תמונה – מוקטנת לפני השליחה
     $('attach').onclick = () => $('aiFile').click();
-    $('aiFile').onchange = e => {
+    $('aiFile').onchange = async e => {
       const f = e.target.files[0]; if (!f) return;
+      if (!/^image\//.test(f.type)) {             // 📄 מסמך: PDF / Word / טקסט
+        e.target.value = '';
+        if (f.size > 15 * 1024 * 1024) return toast('המסמך גדול מדי (עד 15MB)');
+        try {
+          aiDoc = await readDoc(f);
+          aiImage = null;
+          $('previewImg').src = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"><text x="4" y="38" font-size="36">📄</text></svg>');
+          $('preview').querySelector('span').textContent = f.name; $('preview').style.display = 'flex'; fitQ();
+          q.placeholder = 'מה לעשות עם המסמך? (ריק = סיכום)'; q.focus();
+        } catch (er) { toast('❌ ' + er.message); }
+        return;
+      }
+      aiDoc = null; $('preview').querySelector('span').textContent = 'תמונה מצורפת';
       const im = new Image();
       im.onload = () => {
         const max = 1280, sc = Math.min(1, max / Math.max(im.width, im.height));
@@ -2351,7 +2454,7 @@
       e.target.value = '';
     };
     function clearAttach() {
-      aiImage = null; $('preview').style.display = 'none';
+      aiImage = null; aiDoc = null; $('preview').style.display = 'none';
       if (mode === 'ai') drawHl();
       fitQ();
     }
@@ -2361,7 +2464,7 @@
     async function loadAll() {
       try { ME = await api({ action: 'me' }); } catch (e) { toast('❌ ' + e.message); return; }
       applyMe();
-      loadCloudSettings(); loadHistory();
+      loadCloudSettings(); loadHistory(); loadTodayBar(); startAlerts();
       if (mode === 'ai') { aiLoaded = false; aiBox.innerHTML = ''; loadAiHistory(); }
     }
     /* ================= 📚 ספרייה ופלייליסטים (נשמר בדפדפן – IndexedDB) ================= */
@@ -2493,6 +2596,7 @@
     }
     function step(d) {
       if (Q.src === 'yt') return ytStep(d);
+      if (Q.src === 'radio') return radioStep(d);
       if (!Q.ids.length) return;
       Q.i = Q.shuffle && d > 0 ? Math.floor(Math.random() * Q.ids.length) : (Q.i + d + Q.ids.length) % Q.ids.length;
       playCur();
@@ -2512,6 +2616,7 @@
     };
     $('plPrev').onclick = () => {
       if (Q.src === 'yt') return YT.p && YT.p.getCurrentTime() > 4 ? YT.p.seekTo(0, true) : step(-1);
+      if (Q.src === 'radio') return step(-1);
       pa.currentTime > 4 ? (pa.currentTime = 0) : step(-1);
     };
     $('plNext').onclick = () => step(1);
@@ -2872,6 +2977,262 @@
         };
       });
     }
+
+    /* ================= 🧰 כלים ================= */
+    const CITIES = ['ירושלים', 'בני ברק', 'תל אביב', 'חיפה', 'בית שמש', 'מודיעין עילית', 'ביתר עילית', 'אלעד', 'אשדוד', 'נתניה',
+                    'פתח תקווה', 'רחובות', 'צפת', 'טבריה', 'באר שבע', 'קרית גת'];
+    const myCity = () => LS.get('city') || 'ירושלים';
+    $('tCity').innerHTML = CITIES.map(c => '<option' + (c === myCity() ? ' selected' : '') + '>' + c + '</option>').join('');
+    const openTools = (o, tab) => {
+      $('tools').classList.toggle('open', o); $('toolsBg').classList.toggle('open', o);
+      if (o) toolsTab(tab || LS.get('toolsTab') || 'today');
+    };
+    $('openTools').onclick = () => openTools(true);
+    $('closeTools').onclick = $('toolsBg').onclick = () => openTools(false);
+    $('todayBar').onclick = () => openTools(true, 'today');
+    document.querySelectorAll('.ttabs button').forEach(b => b.onclick = () => toolsTab(b.dataset.t));
+    function toolsTab(t) {
+      LS.set('toolsTab', t);
+      document.querySelectorAll('.ttabs button').forEach(x => x.classList.toggle('on', x.dataset.t === t));
+      document.querySelectorAll('.tpane').forEach(p => p.hidden = p.id !== 't_' + t);
+      ({ today: drawToday, learn: drawLearn, radio: drawRadio, wiki: () => $('wikiQ').focus(), notes: drawNotes })[t]();
+    }
+
+    // ===== 📅 היום
+    let TODAY = null;
+    async function getToday(force) {
+      if (!TODAY || force || TODAY.city !== myCity()) TODAY = await api({ action: 'today', city: myCity() });
+      return TODAY;
+    }
+    async function loadTodayBar() {
+      try {
+        const t = await getToday();
+        const z = Object.fromEntries(t.zmanim || []);
+        const ev = (t.events || []).find(e => e.date === t.date && !/candles|havdalah|zmanim/.test(e.cat));
+        $('todayBar').textContent = [t.weather ? t.weather.text.split(' ')[0] + ' ' + t.weather.t + '°' : '', t.city, t.hebrew,
+          ev ? '📅 ' + ev.title : '', z['שקיעה'] ? '🌇 שקיעה ' + z['שקיעה'] : ''].filter(Boolean).join(' · ');
+        $('todayBar').hidden = false;
+      } catch (e) { /* לא קריטי */ }
+    }
+    $('tCity').onchange = () => { LS.set('city', $('tCity').value); drawToday(true); loadTodayBar(); saveMorning(); };
+    async function drawToday(force) {
+      $('mNewsRow').hidden = !(ME && (ME.role === 'admin' || (ME.features || []).includes('tg')));
+      $('redOn').checked = LS.get('redOn') === '1'; $('redCity').checked = LS.get('redCity') === '1';
+      try {
+        const t = await getToday(force);
+        const w = t.weather;
+        $('todayBox').innerHTML =
+          '<h3 style="margin:8px 0 2px">' + esc(t.hebrew || '') + '</h3>' +
+          (w ? '<div>' + esc(w.text) + ' · <b>' + w.t + '°</b> עכשיו</div><div class="wxd">' + (w.days || []).map((d, i) =>
+            '<div>' + ['היום', 'מחר', 'מחרתיים'][i] + '<br>' + esc(d.text.split(' ')[0]) + ' ' + d.min + '°–' + d.max + '°' +
+            (d.rain != null ? '<br>☔ ' + d.rain + '%' : '') + '</div>').join('') + '</div>' : '') +
+          '<b>🕰️ זמני היום – ' + esc(t.city) + '</b><div class="zt">' + (t.zmanim || []).map(z => '<span>' + esc(z[0]) + '</span><b>' + z[1] + '</b>').join('') + '</div>' +
+          '<b>📅 בחודש הקרוב</b><div class="evl">' + (t.events || []).filter(e => !/zmanim/.test(e.cat)).slice(0, 25).map(e =>
+            '<div>' + new Date(e.date + 'T12:00').toLocaleDateString('he-IL', { weekday: 'short', day: 'numeric', month: 'numeric' }) + ' – ' +
+            esc(e.title) + (e.time ? ' ' + e.time : '') + '</div>').join('') + '</div>';
+      } catch (e) { $('todayBox').innerHTML = '<span class="err">❌ ' + esc(e.message) + '</span>'; }
+      try { const n = await api({ action: 'notes' }); $('mOn').checked = !!(n.morning && n.morning.on); $('mNews').checked = !!(n.morning && n.morning.news); } catch (e) {}
+    }
+    async function saveMorning() {
+      try { await api({ action: 'morning', on: $('mOn').checked, news: $('mNews').checked, city: myCity() }); } catch (e) { toast('❌ ' + e.message); }
+    }
+    $('mOn').onchange = () => { saveMorning(); toast($('mOn').checked ? '☀️ מחר בבוקר יגיע אליך מייל' : 'מייל הבוקר כובה'); };
+    $('mNews').onchange = saveMorning;
+    $('redOn').onchange = e => { LS.set('redOn', e.target.checked ? '1' : '0'); startAlerts(); if (e.target.checked) askNotify(); };
+    $('redCity').onchange = e => LS.set('redCity', e.target.checked ? '1' : '0');
+
+    // ===== 🚨 צבע אדום
+    let redT = null;
+    function startAlerts() {
+      clearInterval(redT);
+      if (LS.get('redOn') !== '1') { $('redBanner').hidden = true; return; }
+      const tick = async () => {
+        if (document.hidden && Date.now() % 60000 > 20000) return;     // ברקע – פחות בדיקות
+        try {
+          const r = await api({ action: 'alerts' });
+          const last = Number(LS.get('redLast') || 0);
+          const fresh = (r.items || []).filter(a => a.id > last && Date.now() - Date.parse(a.date) < 3 * 60000);
+          if (r.items && r.items.length) LS.set('redLast', String(Math.max(last, ...r.items.map(a => a.id))));
+          const mine = fresh.filter(a => LS.get('redCity') !== '1' || a.text.includes(myCity()));
+          if (mine.length) {
+            const txt = mine.map(a => a.text).join('\n');
+            $('redBanner').textContent = '🚨 ' + txt; $('redBanner').hidden = false;
+            beep(); notifyDone('🚨 צבע אדום', txt.slice(0, 180));
+            clearTimeout(startAlerts.h); startAlerts.h = setTimeout(() => $('redBanner').hidden = true, 3 * 60000);
+          }
+        } catch (e) { /* ננסה שוב */ }
+      };
+      tick(); redT = setInterval(tick, 20000);
+    }
+    $('redBanner').onclick = () => $('redBanner').hidden = true;
+    function beep() {
+      try {
+        const ac = new (window.AudioContext || window.webkitAudioContext)(), o = ac.createOscillator(), g = ac.createGain();
+        o.type = 'square'; o.frequency.value = 880; o.connect(g); g.connect(ac.destination); g.gain.value = 0.15;
+        o.start(); [0.3, 0.6, 0.9].forEach((t, i) => o.frequency.setValueAtTime(i % 2 ? 880 : 660, ac.currentTime + t)); o.stop(ac.currentTime + 1.2);
+      } catch (e) {}
+    }
+
+    // ===== 📖 לימוד יומי
+    async function drawLearn() {
+      try {
+        const r = await api({ action: 'learn' });
+        $('learnBox').innerHTML = '';
+        (r.items || []).forEach(x => {
+          const d = document.createElement('div'); d.className = 'lrow';
+          d.innerHTML = '<span class="lt"><b>' + esc(x.name) + '</b> – ' + esc(x.value) + '</span><button type="button">📖</button>';
+          d.onclick = () => readLearn(x);
+          $('learnBox').appendChild(d);
+        });
+        if (!r.items || !r.items.length) $('learnBox').innerHTML = '<div class="muted">הלימוד היומי לא זמין כרגע – נסה שוב מאוחר יותר.</div>';
+      } catch (e) { $('learnBox').innerHTML = '<span class="err">❌ ' + esc(e.message) + '</span>'; }
+    }
+    async function readLearn(x) {
+      $('learnBox').innerHTML = '<div class="muted">⏳ טוען את ' + esc(x.value) + '...</div>';
+      try {
+        const r = await api({ action: 'learnText', ref: x.ref });
+        $('learnBox').innerHTML = '<button type="button" class="pbtn" id="learnBack">→ חזרה לרשימה</button>' +
+          '<h3>' + esc(x.name) + ': ' + esc(r.title) + '</h3><div class="reader">' + r.lines.map(l => '<p>' + esc(l) + '</p>').join('') + '</div>';
+        $('learnBack').onclick = drawLearn;
+      } catch (e) { $('learnBox').innerHTML = '<span class="err">❌ ' + esc(e.message) + '</span>'; }
+    }
+
+    // ===== 📻 רדיו
+    let RADIO = [];
+    async function drawRadio() {
+      $('radioAdmin').hidden = !(ME && ME.role === 'admin');
+      try { RADIO = (await api({ action: 'radio' })).list; } catch (e) { $('radioList').textContent = '❌ ' + e.message; return; }
+      $('radioList').innerHTML = RADIO.length ? '' : '<div class="muted">' + (ME && ME.role === 'admin' ? 'עוד אין תחנות – חפש למטה והוסף.' : 'המנהל עוד לא הוסיף תחנות.') + '</div>';
+      RADIO.forEach((st, i) => {
+        const d = document.createElement('div'); d.className = 'lrow' + (Q.src === 'radio' && Q.radio === i ? ' now' : '');
+        d.innerHTML = '<span class="lt">📻 ' + esc(st.name) + '</span>' + (ME && ME.role === 'admin' ? '<button type="button" class="rm">🗑️</button>' : '');
+        d.querySelector('.lt').onclick = () => playRadio(i);
+        const rm = d.querySelector('.rm');
+        if (rm) rm.onclick = async () => { if (!confirm('להסיר את ' + st.name + '?')) return;
+          RADIO = (await api({ action: 'radioSave', list: RADIO.filter((x, k) => k !== i) })).list; drawRadio(); };
+        $('radioList').appendChild(d);
+      });
+    }
+    function playRadio(i) {
+      const st = RADIO[i]; if (!st) return;
+      ytStop(); Q.src = 'radio'; Q.radio = i; Q.cur = null;
+      pa.src = st.url; pa.play().catch(() => toast('📻 התחנה לא נפתחה (אולי חסומה ברשת או לא פעילה)'));
+      $('player').hidden = false; $('plTitle').textContent = '📻 ' + st.name + ' – שידור חי';
+      if ('mediaSession' in navigator) navigator.mediaSession.metadata = new MediaMetadata({ title: st.name, artist: 'רדיו חי' });
+      drawRadio();
+    }
+    function radioStep(d) { if (RADIO.length) playRadio((Q.radio + d + RADIO.length) % RADIO.length); }
+    pa.addEventListener('error', () => { if (Q.src === 'radio') toast('📻 השידור נקטע או חסום'); });
+    $('radioQ').onkeydown = async e => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      $('radioRes').innerHTML = '<div class="muted">⏳ מחפש...</div>';
+      try {
+        const r = await api({ action: 'radioSearch', q: $('radioQ').value.trim() });
+        $('radioRes').innerHTML = r.items.length ? '' : '<div class="muted">לא נמצאו תחנות</div>';
+        r.items.forEach(st => {
+          const d = document.createElement('div'); d.className = 'lrow';
+          d.innerHTML = '<span class="lt">' + esc(st.name) + ' <small>' + esc([st.country, st.codec, st.bitrate ? st.bitrate + 'k' : ''].filter(Boolean).join(' · ')) + '</small></span>' +
+            '<button type="button" class="tr">▶️</button><button type="button" class="ad">➕</button>';
+          d.querySelector('.tr').onclick = () => { ytStop(); Q.src = 'radio'; pa.src = st.url; pa.play().catch(() => toast('לא נפתחה')); $('player').hidden = false; $('plTitle').textContent = '📻 ' + st.name + ' (ניסיון)'; };
+          d.querySelector('.ad').onclick = async () => { RADIO = (await api({ action: 'radioSave', list: RADIO.concat([{ name: st.name, url: st.url }]) })).list; drawRadio(); toast('➕ נוסף'); };
+          $('radioRes').appendChild(d);
+        });
+      } catch (er) { $('radioRes').textContent = '❌ ' + er.message; }
+    };
+
+    // ===== 🔍 ויקיפדיה
+    $('wikiQ').onkeydown = async e => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      $('wikiBox').innerHTML = '<div class="muted">⏳ מחפש...</div>';
+      try {
+        const r = await api({ action: 'wiki', q: $('wikiQ').value.trim() });
+        $('wikiBox').innerHTML = r.items.length ? '' : '<div class="muted">לא נמצא</div>';
+        r.items.forEach(x => {
+          const d = document.createElement('div'); d.className = 'lrow';
+          d.innerHTML = '<span class="lt"><b>' + esc(x.title) + '</b><br><small>' + esc(x.snippet) + '</small></span>';
+          d.onclick = () => wikiOpen(x.title);
+          $('wikiBox').appendChild(d);
+        });
+      } catch (er) { $('wikiBox').textContent = '❌ ' + er.message; }
+    };
+    async function wikiOpen(title) {
+      $('wikiBox').innerHTML = '<div class="muted">⏳ טוען...</div>';
+      try {
+        const r = await api({ action: 'wikiPage', title });
+        $('wikiBox').innerHTML = '<h3>' + esc(r.title) + '</h3><div class="reader">' +
+          esc(r.text).replace(/^(={2,})\s*(.+?)\s*\1$/gm, '<b>$2</b>').split(/\n{2,}/).map(p => '<p>' + p + '</p>').join('') + '</div>';
+      } catch (er) { $('wikiBox').textContent = '❌ ' + er.message; }
+    }
+
+    // ===== 📝 פתקים ותזכורות
+    let NOTES = [];
+    async function drawNotes() {
+      try { const r = await api({ action: 'notes' }); NOTES = r.items || []; drawNoteList(); drawRem(r.rem || []); }
+      catch (e) { $('noteList').textContent = '❌ ' + e.message; }
+    }
+    function drawNoteList() {
+      $('noteList').innerHTML = NOTES.length ? '' : '<div class="muted">אין פתקים.</div>';
+      NOTES.slice().reverse().forEach(n => {
+        const d = document.createElement('div'); d.className = 'tgpost';
+        d.innerHTML = '<div class="tm">' + when(n.t) + '</div>' + esc(n.text);
+        const b = document.createElement('button'); b.type = 'button'; b.textContent = '🗑️ מחק';
+        b.onclick = async () => { NOTES = NOTES.filter(x => x.id !== n.id); await api({ action: 'notesSave', items: NOTES }); drawNoteList(); };
+        d.appendChild(b); $('noteList').appendChild(d);
+      });
+    }
+    $('noteAdd').onclick = async () => {
+      const text = $('noteNew').value.trim(); if (!text) return;
+      NOTES.push({ id: 'n' + Date.now(), t: Date.now(), text });
+      try { await api({ action: 'notesSave', items: NOTES }); $('noteNew').value = ''; drawNoteList(); } catch (e) { alert(e.message); }
+    };
+    function drawRem(list) {
+      $('remList').innerHTML = list.length ? '' : '<div class="muted">אין תזכורות פתוחות.</div>';
+      list.forEach(r => {
+        const d = document.createElement('div'); d.className = 'lrow';
+        d.innerHTML = '<span class="lt">⏰ ' + esc(r.text) + '<br><small>' + new Date(r.when).toLocaleString('he-IL', { weekday: 'short', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' }) + '</small></span><button type="button">🗑️</button>';
+        d.querySelector('button').onclick = async () => drawRem((await api({ action: 'remindDel', id: r.id })).rem);
+        $('remList').appendChild(d);
+      });
+    }
+    $('remAdd').onclick = async () => {
+      const text = $('remText').value.trim(), w = $('remWhen').value;
+      if (!text || !w) return toast('כתוב על מה ומתי');
+      try { const r = await api({ action: 'remindAdd', text, when: w }); $('remText').value = ''; drawRem(r.rem); toast('⏰ אזכיר לך במייל'); }
+      catch (e) { alert(e.message); }
+    };
+
+    // ===== 🌍 תרגום (בבוט הבינה)
+    $('trBtn').onclick = () => { trOn = !trOn; $('trBtn').classList.toggle('on', trOn); toast(trOn ? '🌍 כל הודעה תתורגם' : 'התרגום כובה'); q.focus(); };
+
+    // ===== 📄 קריאת מסמכים לבינה
+    function b64utf8(s) { const u = new TextEncoder().encode(s); let b = ''; for (let i = 0; i < u.length; i += 0x8000) b += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(b); }
+    function fileB64(f) { return new Promise((ok, bad) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.onerror = bad; r.readAsDataURL(f); }); }
+    function loadScript(src) { return new Promise((ok, bad) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = () => bad(new Error('לא הצלחתי לטעון את קורא ה-Word')); document.head.appendChild(s); }); }
+    async function readDoc(f) {
+      if (/\.pdf$/i.test(f.name) || f.type === 'application/pdf') return { name: f.name, mime: 'application/pdf', data: await fileB64(f) };
+      if (/\.txt$/i.test(f.name)) return { name: f.name, mime: 'text/plain', data: b64utf8(await f.text()) };
+      if (/\.docx$/i.test(f.name)) {
+        if (!window.mammoth) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js');
+        const r = await window.mammoth.extractRawText({ arrayBuffer: await f.arrayBuffer() });
+        if (!r.value.trim()) throw new Error('המסמך ריק');
+        return { name: f.name, mime: 'text/plain', data: b64utf8(r.value) };
+      }
+      throw new Error('אפשר לצרף תמונה, PDF, Word (docx) או קובץ טקסט');
+    }
+
+    // ===== 🎼 מילים לשיר בנגן
+    $('plLyr').onclick = async () => {
+      const t = $('plTitle').textContent.replace(/^[▶️⏳📻\s]+/u, '');
+      if (!t || t === '—' || Q.src === 'radio') return toast('אין שיר בנגן');
+      $('lyrT').textContent = '🎼 ' + t; $('lyrText').textContent = '⏳ מחפש מילים...'; $('lyr').hidden = false;
+      try { const r = await api({ action: 'lyrics', title: t }); $('lyrT').textContent = '🎼 ' + r.title; $('lyrText').textContent = r.text; }
+      catch (e) { $('lyrText').textContent = e.message; }
+    };
+    $('lyrClose').onclick = () => $('lyr').hidden = true;
+    $('lyr').onclick = e => { if (e.target === $('lyr')) $('lyr').hidden = true; };
+
 
     /* ================= 📊 סטטיסטיקה ================= */
     async function loadStats() {
