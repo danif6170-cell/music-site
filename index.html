@@ -710,7 +710,7 @@
     <h2>🧰 כלים <button class="icon-btn" id="closeTools" type="button">✕</button></h2>
     <div class="tabs ttabs">
       <button type="button" data-t="today" class="on">📅 היום</button><button type="button" data-t="learn">📖 לימוד</button>
-      <button type="button" data-t="radio">📻 רדיו</button><button type="button" data-t="wiki">🔍 ויקי</button><button type="button" data-t="notes">📝 פתקים</button>
+      <button type="button" data-t="radio">📻 רדיו</button><button type="button" data-t="live">📺 חי</button><button type="button" data-t="wiki">🔍 ויקי</button><button type="button" data-t="notes">📝 פתקים</button>
     </div>
     <div class="tpane" id="t_today">
       <select class="pin" id="tCity"></select>
@@ -726,6 +726,14 @@
       <div id="radioAdmin" hidden>
         <input class="pin" id="radioQ" placeholder="🔎 חיפוש תחנה להוספה (למשל: קול חי) ואז Enter">
         <div id="radioRes"></div>
+      </div>
+    </div>
+    <div class="tpane" id="t_live" hidden>
+      <div class="help">שידורים חיים מיוטיוב. כשהערוץ לא משדר עכשיו – יופיע "לא בשידור".</div>
+      <div id="liveList"><div class="muted">⏳ טוען...</div></div>
+      <div id="liveAdmin" hidden>
+        <div class="tgchips" id="liveSugg"></div>
+        <input class="pin" id="liveQ" placeholder="➕ הוספת ערוץ – שם או קישור ליוטיוב (ואז Enter)">
       </div>
     </div>
     <div class="tpane" id="t_wiki" hidden>
@@ -2999,7 +3007,7 @@
       LS.set('toolsTab', t);
       document.querySelectorAll('.ttabs button').forEach(x => x.classList.toggle('on', x.dataset.t === t));
       document.querySelectorAll('.tpane').forEach(p => p.hidden = p.id !== 't_' + t);
-      ({ today: drawToday, learn: drawLearn, radio: drawRadio, wiki: () => $('wikiQ').focus(), notes: drawNotes })[t]();
+      ({ today: drawToday, learn: drawLearn, radio: drawRadio, live: drawLive, wiki: () => $('wikiQ').focus(), notes: drawNotes })[t]();
     }
 
     // ===== 📅 היום
@@ -3144,6 +3152,46 @@
         });
       } catch (er) { $('radioRes').textContent = '❌ ' + er.message; }
     };
+
+    // ===== 📺 שידור חי
+    let LIVE = [];
+    const LIVE_SUGG = ['עכשיו 14', 'כאן חדשות', 'i24NEWS עברית', 'חדשות 12', 'חדשות 13'];
+    async function drawLive() {
+      const adm = !!(ME && ME.role === 'admin');
+      $('liveAdmin').hidden = !adm;
+      try { LIVE = (await api({ action: 'liveList' })).list; } catch (e) { $('liveList').textContent = '❌ ' + e.message; return; }
+      $('liveList').innerHTML = LIVE.length ? '' : '<div class="muted">' + (adm ? 'עוד אין ערוצים – הוסף למטה.' : 'המנהל עוד לא הוסיף ערוצים.') + '</div>';
+      LIVE.forEach((c, i) => {
+        const d = document.createElement('div'); d.className = 'lrow';
+        d.innerHTML = '<span class="lt">📺 ' + esc(c.name) + ' <small class="st"></small></span>' + (adm ? '<button type="button" class="rm">🗑️</button>' : '');
+        d.querySelector('.lt').onclick = () => playLive(c, d);
+        const rm = d.querySelector('.rm');
+        if (rm) rm.onclick = async () => { if (!confirm('להסיר את ' + c.name + '?')) return;
+          LIVE = (await api({ action: 'liveSave', list: LIVE.filter((x, k) => k !== i) })).list; drawLive(); };
+        $('liveList').appendChild(d);
+      });
+      $('liveSugg').innerHTML = '';
+      LIVE_SUGG.filter(n => !LIVE.some(c => c.name === n)).forEach(n => {
+        const b = document.createElement('button'); b.type = 'button'; b.textContent = '➕ ' + n;
+        b.onclick = () => liveAdd(n); $('liveSugg').appendChild(b);
+      });
+    }
+    async function liveAdd(name) {
+      toast('📺 מחפש את הערוץ...');
+      try { LIVE = (await api({ action: 'liveAdd', name })).list; $('liveQ').value = ''; drawLive(); toast('✅ נוסף'); } catch (e) { alert(e.message); }
+    }
+    $('liveQ').onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); const n = $('liveQ').value.trim(); if (n) liveAdd(n); } };
+    async function playLive(c, row) {
+      const st = row.querySelector('.st'); st.textContent = '⏳ בודק...';
+      try {
+        const r = await api({ action: 'liveNow', ch: c.ch });
+        if (!r.live) { st.textContent = '⚪ לא בשידור עכשיו'; return; }
+        st.textContent = '🔴 בשידור';
+        openTools(false);
+        await streamPlay([{ id: r.id, title: '📺 ' + c.name + ' – שידור חי', channel: c.name }], 0);
+        $('ytBox').classList.add('show');
+      } catch (e) { st.textContent = '❌ ' + e.message; }
+    }
 
     // ===== 🔍 ויקיפדיה
     $('wikiQ').onkeydown = async e => {
