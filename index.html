@@ -729,7 +729,7 @@
       </div>
     </div>
     <div class="tpane" id="t_live" hidden>
-      <div class="help">שידורים חיים מיוטיוב. כשהערוץ לא משדר עכשיו – יופיע "לא בשידור".</div>
+      <div class="help">לחיצה על ערוץ = צפייה חיה (דרך יוטיוב). ⏺️ = הקלטה של כמה דקות מהשידור שמגיעה כקובץ וידאו – עובד גם כשיוטיוב חסום בנטפרי.</div>
       <div id="liveList"><div class="muted">⏳ טוען...</div></div>
       <div id="liveAdmin" hidden>
         <div class="tgchips" id="liveSugg"></div>
@@ -1933,7 +1933,7 @@
       try {
         if (m !== 'song' && m !== 'lecture') askNotify();
         const start = await startDownload(query, m, extra);
-        const r = await waitForJob(start.id, extra && extra.max ? 40 : 16);
+        const r = await waitForJob(start.id, extra && extra.max ? 40 : extra && extra.live ? extra.live + 25 : 16);
         const secs = stop();
         await deliver(box, r, start.id, secs);
         if (secs > 45) notifyDone('✅ ההורדה מוכנה', r.title || label || query);
@@ -2119,7 +2119,8 @@
       let code = '';
       try { code = m === 'video' ? sessionStorage.getItem('videoCode') || '' : ''; } catch (e) {}
       for (let i = 0; i < 4; i++) {
-        try { return await api({ query, mode: m, videoCode: code || undefined, quality: qualityFor(m), max: extra.max, cut: extra.cut, studio: extra.studio }); }
+        try { return await api({ query, mode: m, videoCode: code || undefined, quality: qualityFor(m), max: extra.max, cut: extra.cut, studio: extra.studio,
+                                 liveCh: extra.liveCh, live: extra.live }); }
         catch (e) {
           if (!(e.data && e.data.needVideoCode)) throw e;
           try { sessionStorage.removeItem('videoCode'); } catch (e2) {}
@@ -3163,8 +3164,11 @@
       $('liveList').innerHTML = LIVE.length ? '' : '<div class="muted">' + (adm ? 'עוד אין ערוצים – הוסף למטה.' : 'המנהל עוד לא הוסיף ערוצים.') + '</div>';
       LIVE.forEach((c, i) => {
         const d = document.createElement('div'); d.className = 'lrow';
-        d.innerHTML = '<span class="lt">📺 ' + esc(c.name) + ' <small class="st"></small></span>' + (adm ? '<button type="button" class="rm">🗑️</button>' : '');
+        d.innerHTML = '<span class="lt">📺 ' + esc(c.name) + ' <small class="st"></small></span>' +
+          '<button type="button" class="rec" title="הקלטה מהשידור – יורד כקובץ ועובד גם בנטפרי">⏺️</button>' +
+          (adm ? '<button type="button" class="rm">🗑️</button>' : '');
         d.querySelector('.lt').onclick = () => playLive(c, d);
+        d.querySelector('.rec').onclick = () => recLive(c);
         const rm = d.querySelector('.rm');
         if (rm) rm.onclick = async () => { if (!confirm('להסיר את ' + c.name + '?')) return;
           LIVE = (await api({ action: 'liveSave', list: LIVE.filter((x, k) => k !== i) })).list; drawLive(); };
@@ -3181,6 +3185,14 @@
       try { LIVE = (await api({ action: 'liveAdd', name })).list; $('liveQ').value = ''; drawLive(); toast('✅ נוסף'); } catch (e) { alert(e.message); }
     }
     $('liveQ').onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); const n = $('liveQ').value.trim(); if (n) liveAdd(n); } };
+    // ⏺️ הקלטה מהשידור: השרת מקליט X דקות מעכשיו, והקטע מגיע אליך כמו כל וידאו שמורידים (ולכן נפתח גם בנטפרי)
+    function recLive(c) {
+      const n = prompt('⏺️ כמה דקות להקליט מהשידור של ' + c.name + '? (1–30)\n\nההקלטה מתחילה מעכשיו, והקובץ מגיע כמה דקות אחרי שהיא נגמרת.', '10');
+      if (n === null) return;
+      const mins = Math.max(1, Math.min(30, parseInt(n, 10) || 10));
+      openTools(false);
+      runRequest('📺 ' + c.name, 'video', '⏺️ ' + c.name + ' – ' + mins + ' דקות מהשידור', { liveCh: c.ch, live: mins });
+    }
     async function playLive(c, row) {
       const st = row.querySelector('.st'); st.textContent = '⏳ בודק...';
       try {
