@@ -1116,7 +1116,11 @@
       clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('show'), 2200);
     }
     function b64bytes(s) {   // מהיר יותר מ-Uint8Array.from עם פונקציה
-      const bin = atob(s), u = new Uint8Array(bin.length);
+      if (typeof s !== 'string' || !s) throw new Error('הקובץ לא הגיע בשלמותו – רענן את הדף (Ctrl+F5) ונסה שוב');
+      let bin;
+      try { bin = atob(s.replace(/[^A-Za-z0-9+/=]/g, '')); }
+      catch (e) { throw new Error('הקובץ הגיע פגום (אולי הסינון חתך אותו בדרך) – נסה שוב, ואם זה חוזר רענן את הדף (Ctrl+F5)'); }
+      const u = new Uint8Array(bin.length);
       for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
       return u;
     }
