@@ -198,6 +198,12 @@
     .wxd div { flex: 1; text-align: center; padding: 6px 2px; border-radius: 10px; background: rgba(127,127,127,.1); font-size: 12px; }
     .reader { font-size: 17px; line-height: 1.9; white-space: pre-wrap; margin-top: 8px; }
     .reader p { margin: 0 0 10px; }
+    #relayBox { position: fixed; inset: 0; z-index: 56; background: rgba(0,0,0,.8); display: grid; place-items: center; padding: 12px; }
+    #relayBox[hidden] { display: none; }
+    .rlbox { width: min(820px, 100%); }
+    .rlhead { display: flex; justify-content: space-between; align-items: center; color: #fff; margin-bottom: 8px; gap: 8px; }
+    #rlVideo { width: 100%; border-radius: 12px; background: #000; aspect-ratio: 16/9; }
+    #rlStat { color: #ddd; margin-top: 6px; font-size: 13px; text-align: center; }
     #lyr { position: fixed; inset: 0; z-index: 55; background: rgba(0,0,0,.55); display: grid; place-items: center; padding: 16px; }
     #lyr[hidden] { display: none; }
     .lyrbox { background: var(--glass-strong); border: 1px solid var(--stroke); border-radius: 16px; padding: 16px; width: min(460px, 100%);
@@ -731,7 +737,8 @@
       </div>
     </div>
     <div class="tpane" id="t_live" hidden>
-      <div class="help">לחיצה על ערוץ = צפייה חיה (דרך יוטיוב). ⏺️ = הקלטה של כמה דקות מהשידור שמגיעה כקובץ וידאו – עובד גם כשיוטיוב חסום בנטפרי.</div>
+      <div class="help">לחיצה על ערוץ = צפייה חיה (דרך יוטיוב). 📡 = שידור חי שעובר דרך הבוט – עובד גם בנטפרי (עיכוב של כחצי דקה, רק למנהל).
+        ⏺️ = הקלטה של כמה דקות מהשידור שמגיעה כקובץ.</div>
       <div id="liveList"><div class="muted">⏳ טוען...</div></div>
       <div id="liveAdmin" hidden>
         <div class="tgchips" id="liveSugg"></div>
@@ -755,6 +762,11 @@
     </div>
   </aside>
 
+  <div id="relayBox" hidden><div class="rlbox">
+    <div class="rlhead"><b id="rlTitle">📡</b><button type="button" class="icon-btn" id="rlClose">✕</button></div>
+    <video id="rlVideo" controls playsinline></video>
+    <div id="rlStat" class="muted"></div>
+  </div></div>
   <div id="lyr" hidden><div class="lyrbox"><button type="button" class="icon-btn" id="lyrClose">✕</button><h3 id="lyrT"></h3><div id="lyrText"></div></div></div>
 
   <div id="shabbat" hidden><div><div class="cnd">🕯️🕯️</div><h2 id="shTitle">שבת שלום</h2>
@@ -3172,10 +3184,12 @@
       LIVE.forEach((c, i) => {
         const d = document.createElement('div'); d.className = 'lrow';
         d.innerHTML = '<span class="lt">📺 ' + esc(c.name) + ' <small class="st"></small></span>' +
+          (adm ? '<button type="button" class="rly" title="שידור חי גם בנטפרי (עיכוב של כחצי דקה)">📡</button>' : '') +
           '<button type="button" class="rec" title="הקלטה מהשידור – יורד כקובץ ועובד גם בנטפרי">⏺️</button>' +
           (adm ? '<button type="button" class="rm">🗑️</button>' : '');
         d.querySelector('.lt').onclick = () => playLive(c, d);
         d.querySelector('.rec').onclick = () => recLive(c);
+        const rly = d.querySelector('.rly'); if (rly) rly.onclick = () => relayWatch(c);
         const rm = d.querySelector('.rm');
         if (rm) rm.onclick = async () => { if (!confirm('להסיר את ' + c.name + '?')) return;
           LIVE = (await api({ action: 'liveSave', list: LIVE.filter((x, k) => k !== i) })).list; drawLive(); };
@@ -3199,6 +3213,94 @@
       const mins = Math.max(1, Math.min(30, parseInt(n, 10) || 10));
       openTools(false);
       runRequest('📺 ' + c.name, 'video', '⏺️ ' + c.name + ' – ' + mins + ' דקות מהשידור', { liveCh: c.ch, live: mins });
+    }
+    // 📡 שידור חי דרך הבוט: שרת ההורדות קורא את השידור בקטעים, הקטעים עוברים דרך גוגל (מקודדים), ו-hls.js מנגן ברצף
+    const RL = { rid: null, hls: null, c: null, t0: 0, cache: {} };
+    function loadHls() {
+      if (window.Hls) return Promise.resolve();
+      return new Promise((ok, bad) => { const s = document.createElement('script'); s.src = 'hls.min.js';
+        s.onload = ok; s.onerror = () => bad(new Error('לא הצלחתי לטעון את נגן השידור')); document.head.appendChild(s); });
+    }
+    const rlStat = t => $('rlStat').textContent = t;
+    async function relayWatch(c) {
+      openTools(false); pa.pause(); ytStop();
+      $('relayBox').hidden = false; $('rlTitle').textContent = '📡 ' + c.name + ' – שידור חי';
+      RL.c = c;
+      try { await loadHls(); } catch (e) { rlStat('❌ ' + e.message); return; }
+      if (!window.Hls.isSupported()) { rlStat('❌ הדפדפן הזה לא תומך בנגן'); return; }
+      await relayBegin();
+    }
+    async function relayBegin() {
+      relayKill(false);
+      rlStat('⏳ מפעיל את שרת השידור... (בערך דקה עד שהתמונה מופיעה)');
+      let r;
+      try { r = await api({ action: 'relayStart', ch: RL.c.ch, quality: LS.get('q_video') === '480' ? '480' : '360' }); }
+      catch (e) { rlStat('❌ ' + e.message); return; }
+      RL.rid = r.rid; RL.t0 = Date.now(); RL.cache = {};
+      const myRid = r.rid;
+      // מחכים שיגיעו 3 קטעים ראשונים
+      for (let i = 0; i < 90 && RL.rid === myRid; i++) {
+        let g; try { g = await api({ action: 'relayGet', rid: myRid }); } catch (e) { g = {}; }
+        if (g.end && g.end !== 'ended') { rlStat(g.end); return; }
+        if (g.last >= 2) break;
+        rlStat('⏳ מתחבר לשידור' + '.'.repeat(i % 4) + (g.last >= 0 ? ' (' + (g.last + 1) + '/3)' : ''));
+        await new Promise(res => setTimeout(res, 2000));
+      }
+      if (RL.rid !== myRid) return;
+      rlStat('');
+      const hls = new window.Hls({ loader: RelayLoader, liveSyncDurationCount: 3, liveMaxLatencyDurationCount: 8,
+                                   maxBufferLength: 20, manifestLoadingMaxRetry: 20, levelLoadingMaxRetry: 20, fragLoadingMaxRetry: 10,
+                                   fragLoadingRetryDelay: 1500, levelLoadingRetryDelay: 1500 });
+      RL.hls = hls;
+      hls.on(window.Hls.Events.ERROR, (ev, d) => { if (d.fatal) { rlStat('⚠️ השידור נתקע – מתחבר מחדש...'); setTimeout(() => RL.rid === myRid && relayBegin(), 3000); } });
+      hls.loadSource('https://relay.local/' + myRid + '/live.m3u8');
+      hls.attachMedia($('rlVideo'));
+      $('rlVideo').play().catch(() => rlStat('▶️ לחץ על הווידאו כדי להתחיל'));
+    }
+    function relayKill(stopServer) {
+      if (RL.hls) { try { RL.hls.destroy(); } catch (e) {} RL.hls = null; }
+      if (stopServer && RL.rid) api({ action: 'relayStop', rid: RL.rid }).catch(() => {});
+      if (stopServer) RL.rid = null;
+    }
+    $('rlClose').onclick = () => { relayKill(true); $('rlVideo').removeAttribute('src'); $('rlVideo').load(); $('relayBox').hidden = true; };
+    async function relayPlaylist(rid) {
+      const g = await api({ action: 'relayGet', rid });
+      if (g.end) {                                // השרת סיים (אחרי ~34 דקות) – ממשיכים אוטומטית עם שרת חדש
+        if (rid === RL.rid) { rlStat('🔄 ממשיך את השידור...'); setTimeout(relayBegin, 500); }
+        throw new Error('ended');
+      }
+      const ks = Object.keys(g.durs).map(Number).sort((a, b) => a - b);
+      if (!ks.length) throw new Error('empty');
+      const td = Math.ceil(Math.max(...ks.map(k => g.durs[k])));
+      return '#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:' + td + '\n#EXT-X-MEDIA-SEQUENCE:' + ks[0] + '\n' +
+        ks.map(k => '#EXTINF:' + g.durs[k].toFixed(3) + ',\nseg' + k + '.ts').join('\n') + '\n';
+    }
+    async function relaySegment(rid, n) {
+      for (let i = 0; i < 8; i++) {
+        const g = await api({ action: 'relayGet', rid, n });
+        if (g.x) return unX(g.x).buffer;
+        await new Promise(res => setTimeout(res, 1000));
+      }
+      throw new Error('segment missing');
+    }
+    // "מטעין" של hls.js שלא יוצא לאינטרנט – מבקש את הרשימה והקטעים מהבוט
+    class RelayLoader {
+      constructor() { this.context = null; this.stats = this.newStats(); }
+      newStats() { return { aborted: false, loaded: 0, total: 0, retry: 0, chunkCount: 0, bwEstimate: 0,
+        loading: { start: 0, first: 0, end: 0 }, parsing: { start: 0, end: 0 }, buffering: { start: 0, first: 0, end: 0 } }; }
+      destroy() { this.abort(); }
+      abort() { this.stats.aborted = true; }
+      load(context, config, callbacks) {
+        this.context = context; this.stats = this.newStats();
+        const st = this.stats, m = context.url.match(/relay\.local\/(\w+)\/(.+)$/);
+        st.loading.start = performance.now();
+        const ok = data => { if (st.aborted) return; st.loading.first = st.loading.end = performance.now();
+          st.loaded = st.total = data.byteLength || data.length; callbacks.onSuccess({ url: context.url, data }, st, context, null); };
+        const bad = e => { if (!st.aborted) callbacks.onError({ code: 0, text: e.message }, context, null, st); };
+        if (!m) return bad(new Error('bad url'));
+        const seg = m[2].match(/^seg(\d+)\.ts/);
+        (seg ? relaySegment(m[1], Number(seg[1])) : relayPlaylist(m[1])).then(ok, bad);
+      }
     }
     async function playLive(c, row) {
       const st = row.querySelector('.st'); st.textContent = '⏳ בודק...';
