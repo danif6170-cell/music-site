@@ -852,6 +852,11 @@
     <input class="pin" id="gCid" style="direction:ltr" spellcheck="false" placeholder="xxxxxxxx.apps.googleusercontent.com">
     <button class="pbtn primary" id="gSave" type="button">💾 שמור</button>
 
+    <h3>🔄 עדכון השרת</h3>
+    <div class="help" id="suInfo">מעדכן את קוד השרת (גוגל סקריפט) לגרסה האחרונה – בלי לפתוח את העורך.</div>
+    <button class="pbtn" id="suCheck" type="button">🔍 בדוק אם יש עדכון</button>
+    <button class="pbtn primary" id="suGo" type="button">🔄 עדכן את השרת</button>
+
     <h3>💾 גיבוי אוטומטי</h3>
     <div class="switch"><span>גיבוי שבועי לדרייב (כל יום ראשון, נשמרים 8 אחרונים)</span><input type="checkbox" id="abOn"></div>
     <div class="help">הקבצים נשמרים בדרייב שלך בתיקייה "Music Bot - גיבויים". משחזרים מהם ב"💾 גיבוי ושחזור".</div>
@@ -1602,6 +1607,24 @@
     $('vClear').onclick = async () => {
       if (!confirm('לבטל את קוד הווידאו?')) return;
       try { UD = await api({ action: 'saveAccess', videoCode: '' }); drawUsers(); toast('🗑️ בוטל'); } catch (e) { alert(e.message); }
+    };
+    $('suCheck').onclick = async () => {
+      $('suInfo').textContent = '⏳ בודק…';
+      try {
+        const r = await api({ action: 'updateInfo' });
+        const d = r.date ? new Date(r.date).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' }) : '';
+        $('suInfo').textContent = r.upToDate ? '✅ השרת מעודכן (' + d + ')' : '🆕 יש עדכון מ-' + d + (r.msg ? ': ' + r.msg : '') + ' – לחץ "עדכן את השרת"';
+      } catch (e) { $('suInfo').textContent = '❌ ' + e.message; }
+    };
+    $('suGo').onclick = async () => {
+      if (!confirm('לעדכן את השרת לגרסה האחרונה מגיטהאב?')) return;
+      const b = $('suGo'); b.disabled = true; $('suInfo').textContent = '⏳ מעדכן… (עד חצי דקה)';
+      try {
+        const r = await api({ action: 'selfUpdate' });
+        $('suInfo').textContent = '✅ עודכן לגרסה ' + r.version + (r.msg ? ' – ' + r.msg : '') + '. רענן את האתר.';
+        toast('✅ השרת עודכן');
+      } catch (e) { $('suInfo').textContent = '❌ ' + e.message; }
+      b.disabled = false;
     };
     $('abOn').onchange = async e => {
       try { UD = await api({ action: 'setAutoBackup', on: e.target.checked }); drawUsers(); toast(e.target.checked ? '💾 נשמר גיבוי ראשון – ומעכשיו כל שבוע' : 'הגיבוי השבועי כובה'); }
