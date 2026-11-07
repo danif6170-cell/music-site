@@ -724,7 +724,9 @@
     <div class="tpane" id="t_radio" hidden>
       <div id="radioList"><div class="muted">⏳ טוען...</div></div>
       <div id="radioAdmin" hidden>
-        <input class="pin" id="radioQ" placeholder="🔎 חיפוש תחנה להוספה (למשל: קול חי) ואז Enter">
+        <div class="help">📰 לחדשות בזמן אמת (גם בנטפרי): לחץ על תחנה, ובתוצאות ▶️ לנסות ו-➕ להוסיף.</div>
+        <div class="tgchips" id="radioSugg"></div>
+        <input class="pin" id="radioQ" placeholder="🔎 חיפוש תחנה להוספה (למשל: Kan Bet) ואז Enter">
         <div id="radioRes"></div>
       </div>
     </div>
@@ -3136,9 +3138,14 @@
     }
     function radioStep(d) { if (RADIO.length) playRadio((Q.radio + d + RADIO.length) % RADIO.length); }
     pa.addEventListener('error', () => { if (Q.src === 'radio') toast('📻 השידור נקטע או חסום'); });
+    const RADIO_SUGG = [['📰 כאן ב (חדשות)', 'Kan Bet'], ['📰 כאן מורשת', 'Kan Moreshet'], ['📰 גלי צה"ל', 'Galei Zahal'],
+                        ['📰 103FM', '103fm'], ['🎵 קול חי', 'Kol Chai'], ['🎵 קול ברמה', 'Kol Barama'], ['📰 כאן רקע', 'Kan Reka']];
+    $('radioSugg').innerHTML = '';
+    RADIO_SUGG.forEach(([t, q]) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = t;
+      b.onclick = () => { $('radioQ').value = q; $('radioQ').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' })); }; $('radioSugg').appendChild(b); });
     $('radioQ').onkeydown = async e => {
       if (e.key !== 'Enter') return;
-      e.preventDefault();
+      if (e.preventDefault) e.preventDefault();
       $('radioRes').innerHTML = '<div class="muted">⏳ מחפש...</div>';
       try {
         const r = await api({ action: 'radioSearch', q: $('radioQ').value.trim() });
