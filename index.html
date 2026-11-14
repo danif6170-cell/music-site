@@ -2967,10 +2967,11 @@
                 try {
                   const im = await api({ action: 'tgImg', url });
                   if (im.blocked) { blocked++; continue; }
-                  // נטען ישר מטלגרם – כך הסינון של נטפרי עובד עליו כרגיל
-                  const img = document.createElement('img'); img.referrerPolicy = 'no-referrer';
-                  img.onerror = () => { const n = document.createElement('div'); n.className = 'tm'; n.textContent = '🚫 התמונה נחסמה בסינון'; img.replaceWith(n); };
-                  img.src = im.url; d.appendChild(img);
+                  if (!im.x) continue;
+                  // עברה בדיקה (בלי נשים) – מגיעה מקודדת מהשרת, מפענחים ומציגים
+                  const img = document.createElement('img');
+                  img.src = URL.createObjectURL(new Blob([unX(im.x)], { type: im.type || 'image/jpeg' }));
+                  d.appendChild(img);
                 } catch (e) {}
               }
               b.remove();
@@ -2996,18 +2997,25 @@
 
     // הקבצים מגיעים מקודדים (כדי שהסינון לא יחסום אותם בדרך) – כאן מפענחים
     function unX(b64) { const u = b64bytes(b64); for (let i = 0; i < u.length; i++) u[i] ^= 0x5A; return u; }
-    // 🎬 סרטון מטלגרם: מורידים בחלקים, בודקים 5 תמונות ממנו שאין בהן נשים – ורק אז מציגים
-    // 🎬 סרטון מטלגרם: קודם בודקים את תמונת הפתיחה (בלי נשים), ואז נטען ישר מטלגרם – וגם נטפרי מסנן אותו
+    // 🎬 סרטון מטלגרם: בודקים את תמונת הפתיחה, מורידים מקודד בחלקים, בודקים 5 תמונות מתוכו – ורק אז מציגים
     async function tgVideo(p, d, vb) {
       vb.disabled = true; vb.textContent = '🔎 בודק...';
       try {
         const v = await api({ action: 'tgVidCheck', thumb: p.vthumb });
         if (!v.ok) { vb.textContent = '🚫 בסרטון יש נשים (או שלא הצלחתי לבדוק) – לא מוצג'; return; }
-        const el = document.createElement('video'); el.controls = true; el.playsInline = true; el.preload = 'metadata';
-        el.referrerPolicy = 'no-referrer';
+        const parts = []; let start = 0, size = 0;
+        do {
+          const r = await api({ action: 'tgVid', url: p.vurl, start });
+          parts.push(unX(r.x)); size = r.size || size; start = r.next;
+          if (size) vb.textContent = '⏳ ' + Math.min(99, Math.round(parts.reduce((a, b) => a + b.length, 0) * 100 / size)) + '%';
+        } while (start != null);
+        const url = URL.createObjectURL(new Blob(parts, { type: 'video/mp4' }));
+        vb.textContent = '🔎 בודק את הסרטון...';
+        const ok = await Promise.race([videoFrames(url, 5), new Promise((_, no) => setTimeout(() => no(new Error('timeout')), 25000))]).then(f => api({ action: 'tgFrames', frames: f })).then(r => !!r.ok).catch(() => false);
+        if (!ok) { URL.revokeObjectURL(url); vb.textContent = '🚫 בסרטון יש נשים (או שלא הצלחתי לבדוק) – לא מוצג'; return; }
+        const el = document.createElement('video'); el.controls = true; el.playsInline = true;
         el.style.cssText = 'width:100%;border-radius:10px;margin-top:6px';
-        el.onerror = () => { const n = document.createElement('div'); n.className = 'tm'; n.textContent = '🚫 הסרטון נחסם בסינון או לא נטען'; el.replaceWith(n); };
-        el.src = p.vurl; d.appendChild(el); vb.remove();
+        el.src = url; d.appendChild(el); vb.remove();
       } catch (e) { vb.textContent = '❌ ' + e.message; vb.disabled = false; }
     }
     function videoFrames(url, n) {
