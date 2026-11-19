@@ -3337,7 +3337,7 @@
       const st = row.querySelector('.st'); st.textContent = '⏳ בודק...';
       try {
         const r = await api({ action: 'liveNow', ch: c.ch });
-        if (!r.live) { st.textContent = '⚪ לא בשידור עכשיו'; return; }
+        if (!r.live) { st.textContent = '⚪ לא זוהה שידור – נסה 📡 (עובד גם בנטפרי)'; return; }
         st.textContent = '🔴 בשידור';
         openTools(false);
         await streamPlay([{ id: r.id, title: '📺 ' + c.name + ' – שידור חי', channel: c.name }], 0);
