@@ -520,6 +520,17 @@
       .msg { max-width: 92%; }
       .timer { font-size: 22px; }
     }
+    #waList .wac{display:flex;gap:8px;align-items:center;padding:9px 6px;border-bottom:1px solid var(--line,#ddd);cursor:pointer}
+    #waList .wac b{flex:1} #waList .wac small{color:#888;display:block;font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:240px}
+    #waList .un{background:#25d366;color:#fff;border-radius:10px;padding:0 7px;font-size:12px}
+    .wahead{display:flex;gap:8px;align-items:center;margin-bottom:6px}
+    #waMsgs{max-height:55vh;overflow-y:auto;display:flex;flex-direction:column;gap:4px;padding:4px}
+    #waMsgs .wm{max-width:82%;padding:6px 10px;border-radius:10px;background:#e9e9eb;color:#111;align-self:flex-start;white-space:pre-wrap;word-break:break-word}
+    #waMsgs .wm.me{background:#d9fdd3;color:#111;align-self:flex-end}
+    #waMsgs .wm small{display:block;color:#888;font-size:11px}
+    #waMsgs img{max-width:100%;border-radius:8px;display:block;margin-top:4px}
+    .wasend{display:flex;gap:6px;margin-top:6px;align-items:stretch}.wasend textarea{flex:1;min-width:0;margin:0}.wasend .pbtn,.wahead .pbtn{width:auto;flex:0 0 auto;margin:0;padding:8px 14px}
+    #waMsgs .wm .pbtn{width:auto;margin:4px 0 0;padding:4px 10px;color:#111;background:#fff;border:1px solid #ccc}
   </style>
 </head>
 <body>
@@ -716,7 +727,7 @@
     <h2>🧰 כלים <button class="icon-btn" id="closeTools" type="button">✕</button></h2>
     <div class="tabs ttabs">
       <button type="button" data-t="today" class="on">📅 היום</button><button type="button" data-t="learn">📖 לימוד</button>
-      <button type="button" data-t="radio">📻 רדיו</button><button type="button" data-t="live">📺 חי</button><button type="button" data-t="wiki">🔍 ויקי</button><button type="button" data-t="notes">📝 פתקים</button>
+      <button type="button" data-t="radio">📻 רדיו</button><button type="button" data-t="live">📺 חי</button><button type="button" data-t="wiki">🔍 ויקי</button><button type="button" data-t="notes">📝 פתקים</button><button type="button" data-t="wa" id="waTabBtn" hidden>💬 וואטסאפ</button>
     </div>
     <div class="tpane" id="t_today">
       <select class="pin" id="tCity"></select>
@@ -748,6 +759,14 @@
     <div class="tpane" id="t_wiki" hidden>
       <input class="pin" id="wikiQ" placeholder="🔍 חיפוש בוויקיפדיה (ואז Enter)">
       <div id="wikiBox"></div>
+    </div>
+    <div class="tpane" id="t_wa" hidden>
+      <div id="waList"><div class="muted">⏳ טוען...</div></div>
+      <div id="waConv" hidden>
+        <div class="wahead"><button type="button" class="pbtn" id="waBack">→ שיחות</button><b id="waName"></b></div>
+        <div id="waMsgs"></div>
+        <div class="wasend"><textarea class="pin" id="waText" rows="2" placeholder="כתוב תשובה..."></textarea><button type="button" class="pbtn primary" id="waGo">➤</button></div>
+      </div>
     </div>
     <div class="tpane" id="t_notes" hidden>
       <textarea class="pin" id="noteNew" rows="3" placeholder="📝 פתק חדש..."></textarea>
@@ -853,9 +872,10 @@
     <button class="pbtn primary" id="gSave" type="button">💾 שמור</button>
 
     <h3>💬 וואטסאפ למייל</h3>
-    <div class="help">הודעות חדשות מהוואטסאפ שלך מגיעות במייל (תמונות – רק אחרי בדיקה שאין בהן נשים). בשבת לא נשלח – מגיע במוצאי שבת.<br>⚠️ החיבור לא רשמי של וואטסאפ – יש סיכון קטן שוואטסאפ יחסום את המספר.</div>
+    <div class="help">הוואטסאפ שלך באתר: 🧰 ← 💬 וואטסאפ – קריאה ותשובה (תמונות – רק אחרי בדיקה שאין בהן נשים). אפשר גם סיכום במייל.<br>⚠️ החיבור לא רשמי של וואטסאפ – יש סיכון קטן שוואטסאפ יחסום את המספר.</div>
     <input class="pin" id="waPhone" placeholder="מספר הוואטסאפ, למשל 0521234567" inputmode="tel">
     <div class="switch"><span>גם הודעות מקבוצות</span><input type="checkbox" id="waGroups"></div>
+    <div class="switch"><span>גם סיכום במייל (כל כמה דקות, לא בשבת)</span><input type="checkbox" id="waMail"></div>
     <div class="help" id="waInfo"></div>
     <button class="pbtn primary" id="waOn" type="button">🔗 חבר / הפעל</button>
     <button class="pbtn" id="waOff" type="button">⏹️ כבה</button>
@@ -1190,6 +1210,7 @@
       btns.forEach(b => b.style.display = admin || f.includes(b.dataset.mode) ? '' : 'none');
       // (✈️ טלגרם הוא לא מצב חיפוש – יש לו כפתור משלו למעלה)
       $('openPanel').style.display = admin ? '' : 'none';
+      $('waTabBtn').hidden = !admin;
       $('openTg').style.display = admin || f.includes('tg') ? '' : 'none';
       $('whoami').textContent = !ME ? 'שירים והרצאות ישר אליך'
         : ME.role === 'guest' ? (ME.name || '🎟️ אורח') + ' · עד ' + new Date(ME.until).toLocaleString('he-IL', { weekday: 'short', hour: '2-digit', minute: '2-digit' })
@@ -1620,7 +1641,7 @@
     async function waDraw(r) {
       try { r = r || await api({ action: 'waInfo' }); } catch (e) { $('waInfo').textContent = '❌ ' + e.message; return; }
       if (r.phone && !$('waPhone').value) $('waPhone').value = r.phone;
-      $('waGroups').checked = !!r.groups;
+      $('waGroups').checked = !!r.groups; $('waMail').checked = !!r.mail;
       const T = { connected: '✅ מחובר' + (r.alive ? '' : ' (מתחבר מחדש...)'), pairing: '🔑 קוד חיבור: ' + (r.code || '(נשלח למייל)'),
                   loggedout: '❌ נותק – לחץ "חבר" לקישור מחדש', pairfail: '⌛ הקוד לא הוקלד בזמן – לחץ "חבר" שוב', nophone: '❌ חסר מספר טלפון' };
       $('waInfo').innerHTML = !r.on ? '⚪ כבוי' : (T[r.state] || '⏳ מתחיל... (עד דקה)') +
@@ -1638,6 +1659,7 @@
     };
     $('waOff').onclick = async () => { try { await waDraw(await api({ action: 'waSet', on: false })); toast('⏹️ כובה'); } catch (e) { alert(e.message); } };
     $('waGroups').onchange = () => api({ action: 'waSet', groups: $('waGroups').checked }).catch(() => {});
+    $('waMail').onchange = () => api({ action: 'waSet', mail: $('waMail').checked }).catch(() => {});
     $('suCheck').onclick = async () => {
       $('suInfo').textContent = '⏳ בודק…';
       try {
@@ -3083,8 +3105,73 @@
       LS.set('toolsTab', t);
       document.querySelectorAll('.ttabs button').forEach(x => x.classList.toggle('on', x.dataset.t === t));
       document.querySelectorAll('.tpane').forEach(p => p.hidden = p.id !== 't_' + t);
-      ({ today: drawToday, learn: drawLearn, radio: drawRadio, live: drawLive, wiki: () => $('wikiQ').focus(), notes: drawNotes })[t]();
+      ({ today: drawToday, learn: drawLearn, radio: drawRadio, live: drawLive, wa: drawWa, wiki: () => $('wikiQ').focus(), notes: drawNotes })[t]();
     }
+
+    // ===== 💬 וואטסאפ (מנהל): שיחות, הודעות ותשובות – הכל עובר דרך הבוט
+    const WA = { jid: null, timer: null, media: {} };
+    const waEsc = t => String(t || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const waTime = t => new Date(t).toLocaleString('he-IL', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'numeric' });
+    function waTick() {
+      clearTimeout(WA.timer);
+      if (!$('tools').classList.contains('open') || $('t_wa').hidden) return;
+      WA.timer = setTimeout(() => (WA.jid ? waOpen(WA.jid, true) : drawWa(true)).finally(waTick), 6000);
+    }
+    async function drawWa(quiet) {
+      WA.jid = null; $('waConv').hidden = true; $('waList').hidden = false;
+      try {
+        const r = await api({ action: 'waChats' });
+        const st = !r.info.on ? '⚪ וואטסאפ כבוי – מפעילים בפאנל הניהול' : r.info.alive ? '' : '⏳ הוואטסאפ מתחבר...';
+        $('waList').innerHTML = (st ? '<div class="help">' + st + '</div>' : '') + (r.chats.length ? '' : '<div class="muted">עוד אין הודעות</div>') +
+          r.chats.map(c => '<div class="wac" data-j="' + waEsc(c.jid) + '"><b>' + (c.group ? '👥 ' : '') + waEsc(c.name) +
+            '<small>' + waEsc(c.preview) + '</small></b>' + (c.unread ? '<span class="un">' + c.unread + '</span>' : '') +
+            '<small>' + (c.last ? waTime(c.last) : '') + '</small></div>').join('');
+        $('waList').querySelectorAll('.wac').forEach(d => d.onclick = () => waOpen(d.dataset.j));
+      } catch (e) { if (!quiet) $('waList').innerHTML = '<div class="muted">❌ ' + waEsc(e.message) + '</div>'; }
+      if (!quiet) waTick();
+    }
+    async function waMediaEl(m) {
+      if (!WA.media[m.fid]) WA.media[m.fid] = api({ action: 'waMedia', fid: m.fid }).then(r => URL.createObjectURL(new Blob([unX(r.x)], { type: r.type })));
+      return WA.media[m.fid];
+    }
+    async function waOpen(jid, quiet) {
+      const first = WA.jid !== jid;
+      WA.jid = jid; $('waList').hidden = true; $('waConv').hidden = false;
+      try {
+        const r = await api({ action: 'waChat', jid });
+        if (WA.jid !== jid) return;
+        $('waName').textContent = (r.group ? '👥 ' : '') + (r.name || '');
+        const box = $('waMsgs'), atEnd = box.scrollHeight - box.scrollTop - box.clientHeight < 60;
+        box.innerHTML = r.msgs.map(m => '<div class="wm' + (m.me ? ' me' : '') + '" data-f="' + (m.fid || '') + '" data-k="' + (m.media || '') + '" data-n="' + waEsc(m.fname || '') + '">' +
+          (m.from ? '<small><b>' + waEsc(m.from) + '</b></small>' : '') + waEsc(m.text) +
+          (m.note ? '<i>' + waEsc(m.note) + '</i>' : '') + (m.blocked ? '<i>🚫 תמונה הוסתרה</i>' : '') +
+          (m.media === 'img' ? '<span class="wimg">🖼️ טוען תמונה...</span>' : m.media ? '<button type="button" class="pbtn wfile">' + (m.media === 'audio' ? '▶️ הודעה קולית' : '📎 ' + waEsc(m.fname)) + '</button>' : '') +
+          '<small>' + waTime(m.t) + (m.me ? (m.pending ? ' 🕓' : m.err ? ' ❗ לא נשלח' : ' ✓') : '') + '</small></div>').join('');
+        box.querySelectorAll('.wm[data-k="img"]').forEach(async d => {
+          try { const u = await waMediaEl({ fid: d.dataset.f }); const s = d.querySelector('.wimg'); if (s) s.outerHTML = '<img src="' + u + '">'; } catch (e) {}
+        });
+        box.querySelectorAll('.wfile').forEach(b => b.onclick = async () => {
+          const d = b.closest('.wm'); b.disabled = true; b.textContent = '⏳';
+          try {
+            const u = await waMediaEl({ fid: d.dataset.f });
+            if (d.dataset.k === 'audio') { const a = document.createElement('audio'); a.controls = true; a.src = u; b.replaceWith(a); a.play(); }
+            else { const a = document.createElement('a'); a.href = u; a.download = d.dataset.n || 'file'; a.click(); b.textContent = '📎 ' + (d.dataset.n || ''); b.disabled = false; }
+          } catch (e) { b.textContent = '❌ ' + e.message; }
+        });
+        if (first || atEnd) box.scrollTop = box.scrollHeight;
+        if (first && !quiet) waTick();
+      } catch (e) { if (!quiet) $('waMsgs').innerHTML = '<div class="muted">❌ ' + waEsc(e.message) + '</div>'; }
+    }
+    $('waBack').onclick = () => drawWa();
+    async function waSendNow() {
+      const t = $('waText').value.trim(); if (!t || !WA.jid) return;
+      $('waGo').disabled = true;
+      try { await api({ action: 'waSend', jid: WA.jid, text: t }); $('waText').value = ''; await waOpen(WA.jid, true); $('waMsgs').scrollTop = 1e9; }
+      catch (e) { alert(e.message); }
+      $('waGo').disabled = false;
+    }
+    $('waGo').onclick = waSendNow;
+    $('waText').onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); waSendNow(); } };
 
     // ===== 📅 היום
     let TODAY = null;

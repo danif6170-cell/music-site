@@ -1,4 +1,4 @@
-// 💬 וואטסאפ ← מייל
+// 💬 וואטסאפ ← האתר (ומייל)
 // מתחבר לוואטסאפ כ"מכשיר מקושר", אוסף הודעות חדשות ושולח אותן לבוט (גוגל סקריפט),
 // שבודק תמונות (בלי נשים) ושולח מייל מסודר. רץ בגיטהאב עד ~5.5 שעות, ואז הבוט מפעיל אותו מחדש.
 import makeWASocket, { useMultiFileAuthState, DisconnectReason, downloadMediaMessage,
@@ -45,24 +45,36 @@ async function saveAuth(final) {
   await api({ action: 'waAuthPut', files });
 }
 
-// --- תור הודעות → מייל
+// --- תור הודעות → הבוט (האתר + מייל מסכם). כשהאתר פתוח – כל כמה שניות, אחרת פעם בדקה
 const queue = [];
-let sentToday = 0, day = new Date().getDate(), lastFlush = Date.now();
+let fast = false, lastFlush = 0;
 async function flush(force) {
   if (!queue.length) return;
-  if (new Date().getDate() !== day) { day = new Date().getDate(); sentToday = 0; }
-  const every = (sentToday > 60 ? 30 : 5) * 60 * 1000;          // שומרים על מכסת המיילים של גוגל
-  const size = queue.reduce((a, m) => a + (m.img || '').length + (m.file || '').length, 0);
-  if (!force && Date.now() - lastFlush < every && size < 12e6) return;
+  if (!force && Date.now() - lastFlush < (fast ? 4000 : 60000)) return;
   const batch = queue.splice(0, queue.length);
   lastFlush = Date.now();
   const r = await api({ action: 'waIn', msgs: batch });
-  if (r.ok) { sentToday++; log('mailed', batch.length); } else { log('mail failed – back to queue'); queue.unshift(...batch); }
+  if (r.ok) { fast = !!r.fast; log('forwarded', batch.length); } else { log('forward failed – back to queue'); queue.unshift(...batch); }
+}
+// --- תשובות מהאתר
+let lastOut = 0;
+async function outbox(sock) {
+  if (Date.now() - lastOut < (fast ? 4000 : 45000)) return;
+  lastOut = Date.now();
+  const r = await api({ action: 'waOut' });
+  fast = !!r.fast;
+  for (const o of r.out || []) {
+    try {
+      const res = await sock.sendMessage(o.jid, { text: o.text });
+      await api({ action: 'waSent', jid: o.jid, tmp: o.tmp, id: res && res.key && res.key.id });
+      log('sent reply');
+    } catch (e) { await api({ action: 'waSent', jid: o.jid, tmp: o.tmp, error: e.message }); }
+  }
 }
 
 const names = {};
 async function chatName(sock, jid, fallback) {
-  if (names[jid]) return names[jid];
+  if (names[jid] && !(fallback && names[jid].startsWith('+'))) return names[jid];
   if (isJidGroup(jid)) { try { names[jid] = (await sock.groupMetadata(jid)).subject; } catch { names[jid] = 'קבוצה'; } }
   else names[jid] = fallback || '+' + jid.split('@')[0];
   return names[jid];
@@ -97,18 +109,19 @@ async function main() {
     });
 
     sock.ev.on('messages.upsert', async ({ messages, type }) => {
-      if (type !== 'notify') return;
       for (const m of messages) {
         try {
           const jid = m.key.remoteJid;
-          if (!jid || m.key.fromMe || jid === 'status@broadcast' || jid.endsWith('@newsletter')) continue;
+          if (!jid || jid === 'status@broadcast' || jid.endsWith('@newsletter')) continue;
+          const ts = Number(m.messageTimestamp || 0) * 1000;
+          if (type !== 'notify' && !(m.key.fromMe && Date.now() - ts < 5 * 60000)) continue;   // היסטוריה ישנה – לא
           const group = isJidGroup(jid);
           if (group && !cfg.groups) continue;
           const t = getContentType(m.message || {});
           if (!t || /protocolMessage|reactionMessage|senderKeyDistribution/.test(t)) continue;
           const msg = m.message[t] || {};
           const it = {
-            id: m.key.id, chat: await chatName(sock, jid, group ? '' : m.pushName), group: !!group,
+            id: m.key.id, jid, me: !!m.key.fromMe, chat: await chatName(sock, jid, group || m.key.fromMe ? '' : m.pushName), group: !!group,
             from: m.pushName || '', time: Number(m.messageTimestamp || Date.now() / 1000) * 1000,
             text: m.message.conversation || msg.text || msg.caption || ''
           };
@@ -155,9 +168,10 @@ async function main() {
   }
 
   while (!done && Date.now() - t0 < RUN_MS) {
-    await new Promise(r => setTimeout(r, 30000));
+    await new Promise(r => setTimeout(r, fast ? 3000 : 15000));
     await flush(false).catch(e => log('flush', e.message));
-    api({ action: 'waStatus', state: 'connected' }).catch(() => {});     // דופק – שהבוט יידע שאני חי
+    await outbox(sock).catch(e => log('outbox', e.message));
+    if (Date.now() - (globalThis.hb || 0) > 120000) { globalThis.hb = Date.now(); api({ action: 'waStatus', state: 'connected' }).catch(() => {}); }   // דופק
     saveAuth(false).catch(() => {});
   }
   done = true;
