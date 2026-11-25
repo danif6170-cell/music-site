@@ -1,0 +1,24 @@
+name: WhatsApp to Email
+on:
+  repository_dispatch:
+    types: [whatsapp]
+concurrency:
+  group: whatsapp
+  cancel-in-progress: false
+jobs:
+  bridge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 345
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: wa/package-lock.json
+      - name: Install
+        working-directory: wa
+        run: npm ci --no-audit --no-fund
+      - name: Run bridge
+        working-directory: wa
+        run: node index.mjs
