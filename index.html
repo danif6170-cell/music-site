@@ -852,6 +852,14 @@
     <input class="pin" id="gCid" style="direction:ltr" spellcheck="false" placeholder="xxxxxxxx.apps.googleusercontent.com">
     <button class="pbtn primary" id="gSave" type="button">💾 שמור</button>
 
+    <h3>💬 וואטסאפ למייל</h3>
+    <div class="help">הודעות חדשות מהוואטסאפ שלך מגיעות במייל (תמונות – רק אחרי בדיקה שאין בהן נשים). בשבת לא נשלח – מגיע במוצאי שבת.<br>⚠️ החיבור לא רשמי של וואטסאפ – יש סיכון קטן שוואטסאפ יחסום את המספר.</div>
+    <input class="pin" id="waPhone" placeholder="מספר הוואטסאפ, למשל 0521234567" inputmode="tel">
+    <div class="switch"><span>גם הודעות מקבוצות</span><input type="checkbox" id="waGroups"></div>
+    <div class="help" id="waInfo"></div>
+    <button class="pbtn primary" id="waOn" type="button">🔗 חבר / הפעל</button>
+    <button class="pbtn" id="waOff" type="button">⏹️ כבה</button>
+
     <h3>🔄 עדכון השרת</h3>
     <div class="help" id="suInfo">מעדכן את קוד השרת (גוגל סקריפט) לגרסה האחרונה – בלי לפתוח את העורך.</div>
     <button class="pbtn" id="suCheck" type="button">🔍 בדוק אם יש עדכון</button>
@@ -1365,6 +1373,7 @@
       loadCk();
       loadKeys();
       loadSingers();
+      waDraw();
     };
 
     // ===== 👥 משתמשים והרשאות =====
@@ -1608,6 +1617,27 @@
       if (!confirm('לבטל את קוד הווידאו?')) return;
       try { UD = await api({ action: 'saveAccess', videoCode: '' }); drawUsers(); toast('🗑️ בוטל'); } catch (e) { alert(e.message); }
     };
+    async function waDraw(r) {
+      try { r = r || await api({ action: 'waInfo' }); } catch (e) { $('waInfo').textContent = '❌ ' + e.message; return; }
+      if (r.phone && !$('waPhone').value) $('waPhone').value = r.phone;
+      $('waGroups').checked = !!r.groups;
+      const T = { connected: '✅ מחובר' + (r.alive ? '' : ' (מתחבר מחדש...)'), pairing: '🔑 קוד חיבור: ' + (r.code || '(נשלח למייל)'),
+                  loggedout: '❌ נותק – לחץ "חבר" לקישור מחדש', pairfail: '⌛ הקוד לא הוקלד בזמן – לחץ "חבר" שוב', nophone: '❌ חסר מספר טלפון' };
+      $('waInfo').innerHTML = !r.on ? '⚪ כבוי' : (T[r.state] || '⏳ מתחיל... (עד דקה)') +
+        (r.state === 'pairing' ? '<br>בטלפון: וואטסאפ ← הגדרות ← מכשירים מקושרים ← קישור מכשיר ← "קישור באמצעות מספר טלפון" ← הקלד את הקוד' : '');
+    }
+    $('waOn').onclick = async () => {
+      const b = $('waOn'); b.disabled = true; $('waInfo').textContent = '⏳ מפעיל...';
+      try {
+        const relink = !!(await api({ action: 'waInfo' }).then(r => /loggedout|pairfail/.test(r.state)).catch(() => false));
+        await waDraw(await api({ action: 'waSet', on: true, phone: $('waPhone').value, groups: $('waGroups').checked, relink }));
+        toast('✅ מפעיל – תוך דקה יגיע קוד חיבור למייל (רק בפעם הראשונה)');
+        let k = 0; const iv = setInterval(() => { if (++k > 20) clearInterval(iv); waDraw(); }, 15000);
+      } catch (e) { $('waInfo').textContent = '❌ ' + e.message; }
+      b.disabled = false;
+    };
+    $('waOff').onclick = async () => { try { await waDraw(await api({ action: 'waSet', on: false })); toast('⏹️ כובה'); } catch (e) { alert(e.message); } };
+    $('waGroups').onchange = () => api({ action: 'waSet', groups: $('waGroups').checked }).catch(() => {});
     $('suCheck').onclick = async () => {
       $('suInfo').textContent = '⏳ בודק…';
       try {
