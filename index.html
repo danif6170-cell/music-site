@@ -1188,7 +1188,25 @@
       });
       return res.json();
     }
+    // 👁️ מצב "צפייה כמשתמש" (המנהל פתח מהפאנל) – כרטיס זמני ללשונית הזאת בלבד
+    const IMP = (() => {
+      const u = new URLSearchParams(location.search).get('imp');
+      if (u) { try { sessionStorage.setItem('impToken', u); } catch (e) {} history.replaceState(null, '', location.pathname); }
+      try { return sessionStorage.getItem('impToken') || ''; } catch (e) { return u || ''; }
+    })();
+    if (IMP) (f => document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', f) : f())(() => {
+      const b = document.createElement('div');
+      b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#f59e0b;color:#111;text-align:center;padding:6px;font-weight:700';
+      b.innerHTML = '👁️ צפייה כמו המשתמש – קריאה בלבד <button type="button" style="margin-right:10px">✕ סגור</button>';
+      b.querySelector('button').onclick = () => { try { sessionStorage.removeItem('impToken'); } catch (e) {} window.close(); location.href = location.pathname; };
+      document.body.appendChild(b); document.body.style.paddingTop = '34px';
+    });
     async function api(body, retried) {
+      if (IMP) {
+        const d = await raw({ ...body, token: IMP });
+        if (d.error) { if (d.login) { try { sessionStorage.removeItem('impToken'); } catch (e) {} alert('⌛ זמן הצפייה נגמר'); location.href = location.pathname; } throw new Error(d.error); }
+        return d;
+      }
       if (!LS.get('musicToken')) await askLogin();
       const data = await raw({ ...body, token: LS.get('musicToken') });
       if (data.error) {
@@ -1416,12 +1434,18 @@
           (u.features.length ? u.features.map(f => esc(UD.names[f])).join(' · ') : '<span class="muted">בלי הרשאות</span>') +
 
           '<div style="font-size:13px">🎤 ' + sgText(u.singers) + '</div>' +
-          '<div class="muted" style="font-size:12px">' + (u.last ? 'נכנס לאחרונה: ' + when(u.last) : 'עוד לא נכנס') + '</div>' +
-          '<div class="actions"><button type="button" class="ed">✏️ עריכה</button><button type="button" class="ac">👀 פעילות</button>' +
+          '<div class="muted" style="font-size:12px">' + (Math.max(u.seen || 0, u.last || 0) ? 'פעיל לאחרונה: ' + when(Math.max(u.seen || 0, u.last || 0)) +
+            (u.last ? ' · התחבר: ' + when(u.last) : '') : 'עוד לא נכנס') + '</div>' +
+          '<div class="actions"><button type="button" class="ed">✏️ עריכה</button><button type="button" class="ac">👀 פעילות</button><button type="button" class="va">👁️ צפה כמוהו</button>' +
           '<button type="button" class="tg">' + (u.on ? '⛔ חסום' : '✅ הפעל') + '</button>' +
           '<button type="button" class="del">🗑️ מחק</button></div>';
         d.querySelector('.ed').onclick = () => fillUser(u);
         d.querySelector('.ac').onclick = () => showActivity(u, d);
+        d.querySelector('.va').onclick = async () => {
+          const w = window.open('', '_blank');           // נפתח מיד (אחרת הדפדפן חוסם חלון קופץ)
+          try { const r = await api({ action: 'viewAs', email: u.email }); w.location.href = location.pathname + '?imp=' + r.token; }
+          catch (e) { w.close(); alert(e.message); }
+        };
 
         d.querySelector('.tg').onclick = () => sendUser(Object.assign({}, u, { on: !u.on }));   // שומר גם את הזמרים שלו
         d.querySelector('.del').onclick = async () => {
