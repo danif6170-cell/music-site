@@ -2739,15 +2739,15 @@
     pa.ontimeupdate = () => { $('plBar').firstChild.style.width = (pa.duration ? pa.currentTime / pa.duration * 100 : 0) + '%'; };
     $('plBar').onclick = e => {
       const r = $('plBar').getBoundingClientRect(), f = Math.abs(e.clientX - r.right) / r.width;
-      if (Q.src === 'yt') { if (YT.p && YT.p.getDuration) YT.p.seekTo(f * YT.p.getDuration(), true); return; }
+      if (Q.src === 'yt') { if (YTP.p && YTP.p.getDuration) YTP.p.seekTo(f * YTP.p.getDuration(), true); return; }
       if (pa.duration) pa.currentTime = f * pa.duration;
     };
     $('plPlay').onclick = () => {
-      if (Q.src === 'yt') { if (!YT.p) return; YT.p.getPlayerState() === 1 ? YT.p.pauseVideo() : YT.p.playVideo(); return; }
+      if (Q.src === 'yt') { if (!YTP.p) return; YTP.p.getPlayerState() === 1 ? YTP.p.pauseVideo() : YTP.p.playVideo(); return; }
       pa.paused ? pa.play() : pa.pause();
     };
     $('plPrev').onclick = () => {
-      if (Q.src === 'yt') return YT.p && YT.p.getCurrentTime() > 4 ? YT.p.seekTo(0, true) : step(-1);
+      if (Q.src === 'yt') return YTP.p && YTP.p.getCurrentTime() > 4 ? YTP.p.seekTo(0, true) : step(-1);
       if (Q.src === 'radio') return step(-1);
       pa.currentTime > 4 ? (pa.currentTime = 0) : step(-1);
     };
@@ -2756,12 +2756,12 @@
     $('plClose').onclick = () => { pa.pause(); ytStop(); $('player').hidden = true; Q.cur = null; };
 
     /* ================= ▶️ ניגון מיידי מיוטיוב (בלי להוריד) ================= */
-    const YT = { p: null, ready: null, list: [], i: 0, iv: null };
+    const YTP = { p: null, ready: null, list: [], i: 0, iv: null };
     function ytApi() {
-      if (YT.ready) return YT.ready;
-      YT.ready = new Promise((ok, bad) => {
+      if (YTP.ready) return YTP.ready;
+      YTP.ready = new Promise((ok, bad) => {
         window.onYouTubeIframeAPIReady = () => {
-          YT.p = new window.YT.Player('ytPlayer', {
+          YTP.p = new window.YT.Player('ytPlayer', {
             host: 'https://www.youtube-nocookie.com', width: '100%', height: '100%',
             playerVars: { autoplay: 1, playsinline: 1, rel: 0, modestbranding: 1, iv_load_policy: 3, fs: 0 },
             events: {
@@ -2776,41 +2776,42 @@
         };
         const s = document.createElement('script');
         s.src = 'https://www.youtube.com/iframe_api';
-        s.onerror = () => { YT.ready = null; bad(new Error('יוטיוב חסום ברשת הזאת (אולי נטפרי) – אפשר רק להוריד ⬇️')); };
+        s.onerror = () => { YTP.ready = null; bad(new Error('יוטיוב חסום ברשת הזאת (אולי נטפרי) – אפשר רק להוריד ⬇️')); };
         document.head.appendChild(s);
+        setTimeout(() => { if (!YTP.p || !YTP.p.loadVideoById) { YTP.ready = null; bad(new Error('הנגן של יוטיוב לא נטען (אולי חסום ברשת הזאת) – אפשר להוריד ⬇️')); } }, 20000);
       });
-      return YT.ready;
+      return YTP.ready;
     }
     async function streamPlay(list, i) {
       pa.pause(); Q.src = 'yt';
-      YT.list = list; YT.i = i;
+      YTP.list = list; YTP.i = i;
       $('player').hidden = false; $('plVid').hidden = false;
       $('plTitle').textContent = '⏳ ' + list[i].title;
       try { await ytApi(); } catch (e) { $('plTitle').textContent = '❌ ' + e.message; return; }
       ytLoad();
     }
     function ytLoad() {
-      const v = YT.list[YT.i]; if (!v || !YT.p) return;
-      YT.p.loadVideoById(v.id);
+      const v = YTP.list[YTP.i]; if (!v || !YTP.p) return;
+      YTP.p.loadVideoById(v.id);
       $('plTitle').textContent = '▶️ ' + v.title;
       document.querySelectorAll('.prow').forEach(r => r.classList.toggle('now', !!r.querySelector('img[src*="/' + v.id + '/"]')));
       if ('mediaSession' in navigator) navigator.mediaSession.metadata = new MediaMetadata({ title: v.title, artist: v.channel || '',
         artwork: [{ src: 'https://i.ytimg.com/vi/' + v.id + '/hqdefault.jpg', sizes: '480x360', type: 'image/jpeg' }] });
-      clearInterval(YT.iv);
-      YT.iv = setInterval(() => {
-        if (!YT.p || !YT.p.getDuration) return;
-        const d = YT.p.getDuration(); $('plBar').firstChild.style.width = (d ? YT.p.getCurrentTime() / d * 100 : 0) + '%';
+      clearInterval(YTP.iv);
+      YTP.iv = setInterval(() => {
+        if (!YTP.p || !YTP.p.getDuration) return;
+        const d = YTP.p.getDuration(); $('plBar').firstChild.style.width = (d ? YTP.p.getCurrentTime() / d * 100 : 0) + '%';
       }, 500);
     }
     function ytStep(d) {
-      if (!YT.list.length) return;
-      YT.i = Q.shuffle && d > 0 ? Math.floor(Math.random() * YT.list.length) : YT.i + d;
-      if (YT.i < 0 || YT.i >= YT.list.length) { YT.i = Math.max(0, Math.min(YT.i, YT.list.length - 1)); return; }
+      if (!YTP.list.length) return;
+      YTP.i = Q.shuffle && d > 0 ? Math.floor(Math.random() * YTP.list.length) : YTP.i + d;
+      if (YTP.i < 0 || YTP.i >= YTP.list.length) { YTP.i = Math.max(0, Math.min(YTP.i, YTP.list.length - 1)); return; }
       ytLoad();
     }
     function ytStop() {
-      clearInterval(YT.iv);
-      if (YT.p && YT.p.stopVideo) YT.p.stopVideo();
+      clearInterval(YTP.iv);
+      if (YTP.p && YTP.p.stopVideo) YTP.p.stopVideo();
       $('ytBox').classList.remove('show'); $('plVid').hidden = true;
       document.querySelectorAll('.prow.now').forEach(r => r.classList.remove('now'));
     }
