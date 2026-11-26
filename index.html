@@ -1228,6 +1228,11 @@
       btns.forEach(b => b.style.display = admin || f.includes(b.dataset.mode) ? '' : 'none');
       // (✈️ טלגרם הוא לא מצב חיפוש – יש לו כפתור משלו למעלה)
       $('openPanel').style.display = admin ? '' : 'none';
+      // 🧰 כלים – רק למנהל או למי שהמנהל אישר לו
+      const tools = admin || f.includes('tools');
+      $('openTools').style.display = tools ? '' : 'none';
+      $('todayBar').style.display = tools ? '' : 'none';
+      if (!tools) { $('tools').classList.remove('open'); $('toolsBg').classList.remove('open'); }
       $('waTabBtn').hidden = !admin;
       $('openTg').style.display = admin || f.includes('tg') ? '' : 'none';
       $('whoami').textContent = !ME ? 'שירים והרצאות ישר אליך'
@@ -2590,7 +2595,8 @@
     async function loadAll() {
       try { ME = await api({ action: 'me' }); } catch (e) { toast('❌ ' + e.message); return; }
       applyMe();
-      loadCloudSettings(); loadHistory(); loadTodayBar(); startAlerts();
+      loadCloudSettings(); loadHistory();
+      if (ME.role === 'admin' || (ME.features || []).includes('tools')) { loadTodayBar(); startAlerts(); }
       if (mode === 'ai') { aiLoaded = false; aiBox.innerHTML = ''; loadAiHistory(); }
     }
     /* ================= 📚 ספרייה ופלייליסטים (נשמר בדפדפן – IndexedDB) ================= */
