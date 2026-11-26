@@ -3398,7 +3398,7 @@
         s.onload = () => window.Hls ? ok() : bad(); s.onerror = () => { s.remove(); bad(); }; document.head.appendChild(s);
       })), Promise.reject()).catch(() => { throw new Error('לא הצלחתי לטעון את נגן השידור'); });
     }
-    const rlStat = t => $('rlStat').textContent = t;
+    const rlStat = t => { const e = $('rlStat'); if (/^<button/.test(t)) e.innerHTML = t; else e.textContent = t; };
     async function relayWatch(c) {
       openTools(false); pa.pause(); ytStop();
       $('relayBox').hidden = false; $('rlTitle').textContent = '📡 ' + c.name + ' – שידור חי';
@@ -3432,7 +3432,19 @@
       hls.on(window.Hls.Events.ERROR, (ev, d) => { if (d.fatal) { rlStat('⚠️ השידור נתקע – מתחבר מחדש...'); setTimeout(() => RL.rid === myRid && relayBegin(), 3000); } });
       hls.loadSource('https://relay.local/' + myRid + '/live.m3u8');
       hls.attachMedia($('rlVideo'));
-      $('rlVideo').play().catch(() => rlStat('▶️ לחץ על הווידאו כדי להתחיל'));
+      // מנגנים ברגע שיש וידאו. אם הדפדפן לא מרשה קול בלי לחיצה – מנגנים בשקט ומציעים להפעיל קול
+      let started = false;
+      hls.on(window.Hls.Events.FRAG_BUFFERED, () => {
+        if (started || RL.rid !== myRid) return; started = true;
+        const v = $('rlVideo');
+        v.play().then(() => rlStat('')).catch(() => {
+          v.muted = true;
+          v.play().then(() => {
+            rlStat('<button type="button" class="pbtn" id="rlUnmute" style="width:auto">🔊 הפעל קול</button>');
+            const b = $('rlUnmute'); if (b) b.onclick = () => { v.muted = false; v.play().catch(() => {}); rlStat(''); };
+          }).catch(() => rlStat('▶️ לחץ על הווידאו כדי להתחיל'));
+        });
+      });
     }
     function relayKill(stopServer) {
       if (RL.hls) { try { RL.hls.destroy(); } catch (e) {} RL.hls = null; }
